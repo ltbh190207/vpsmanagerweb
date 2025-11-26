@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -11,8 +11,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Xin chào User</h1>
-        <p>Tạo key để kích hoạt VPSManager</p>
+        <h1>User Dashboard</h1>
         <select id="expiration-select">
             <option value="none">Vĩnh viễn</option>
             <option value="1month">1 tháng</option>
@@ -20,12 +19,16 @@
             <option value="1year">1 năm</option>
         </select>
         <button onclick="createKey()">Tạo Key Mới</button>
-        <h3>Key của bạn</h3>
         <ul id="key-list"></ul>
-        <br>
-        <button onclick="logout()" class="logout">Đăng xuất</button>
-        <br><a href="index.html">Trang chủ</a>
+        <button onclick="logout()">Đăng xuất</button>
+        <a href="admin.html">Thông tin Admin</a>
     </div>
+    <footer>
+        <a href="https://facebook.com" target="_blank">Facebook</a>
+        <a href="https://youtube.com" target="_blank">YouTube</a>
+        <a href="https://t.me" target="_blank">Telegram</a>
+        <a href="mailto:admin@gmail.com">Gmail</a>
+    </footer>
     <script src="script.js"></script>
 </body>
 </html>
