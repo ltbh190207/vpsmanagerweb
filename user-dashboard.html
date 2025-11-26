@@ -6,31 +6,7 @@
     <title>User Dashboard - VPS Manager</title>
     <link rel="stylesheet" href="style.css">
     
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
-            authDomain: "vpsmanagerweb.firebaseapp.com",
-            projectId: "vpsmanagerweb",
-            storageBucket: "vpsmanagerweb.firebasestorage.app",
-            messagingSenderId: "851393978130",
-            appId: "1:851393978130:web:24fddef37a51f577565dcb",
-            measurementId: "G-7H51LQGZV0"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        window.firebase = { 
-            app, auth, db, 
-            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, 
-            collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp 
-        };
-    </script>
+    
 </head>
 <body>
     <div class="container">
@@ -68,6 +44,6 @@
         <a href="mailto:admin@gmail.com">📧 Gmail</a>
     </footer>
     
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
