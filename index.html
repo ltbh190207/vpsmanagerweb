@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VPS Key Manager</title>
+    <title>VPS Key Manager - Trang chủ</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase SDK v10 Modular -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
             authDomain: "vpsmanagerweb.firebaseapp.com",
@@ -23,46 +21,50 @@
             measurementId: "G-7H51LQGZV0"
         };
         
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Export to global scope
         window.firebase = { 
-            app, 
-            auth, 
-            db, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
-            onAuthStateChanged, 
-            collection, 
-            addDoc, 
-            getDocs, 
-            getDoc, 
-            doc, 
-            setDoc, 
-            updateDoc, 
-            deleteDoc, 
-            Timestamp 
+            app, auth, db, 
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, 
+            collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp 
         };
     </script>
 </head>
 <body>
-    <div class="container">
-        <h1>VPS Key Manager</h1>
-        <p>Quản lý key cho VPSManager của bạn.</p>
-        <button id="download-btn">Tải VPSManager</button>
-        <a href="login.html">Đăng nhập / Đăng ký</a>
-        <a href="admin.html">Thông tin Admin</a>
+    <div class="container" style="text-align: center;">
+        <h1>🚀 VPS Key Manager</h1>
+        <p style="font-size: 1.3rem;">Hệ thống quản lý key chuyên nghiệp cho VPSManager</p>
+        
+        <div class="price-card" style="margin: 40px auto; max-width: 600px;">
+            <h2 style="color: #fff;">✨ Tính năng nổi bật</h2>
+            <div style="text-align: left; padding: 20px;">
+                <p>🔐 Bảo mật cao với Firebase</p>
+                <p>⚡ Kích hoạt key nhanh chóng</p>
+                <p>💎 Hỗ trợ key vĩnh viễn & có hạn</p>
+                <p>💰 Giá chỉ 100,000 VNĐ/key</p>
+                <p>📱 Responsive đa nền tảng</p>
+            </div>
+        </div>
+        
+        <button id="download-btn" style="font-size: 1.2rem; padding: 20px 50px;">
+            📥 Tải VPSManager
+        </button>
+        
+        <div style="margin: 30px 0;">
+            <a href="login.html" class="btn" style="font-size: 1.1rem;">🔑 Đăng nhập / Đăng ký</a>
+            <a href="admin.html" class="btn btn-secondary" style="font-size: 1.1rem;">ℹ️ Thông tin Admin</a>
+        </div>
     </div>
+    
     <footer>
-        <a href="https://facebook.com" target="_blank">Facebook</a>
-        <a href="https://youtube.com" target="_blank">YouTube</a>
-        <a href="https://t.me" target="_blank">Telegram</a>
-        <a href="mailto:admin@gmail.com">Gmail</a>
+        <a href="https://facebook.com" target="_blank">📘 Facebook</a>
+        <a href="https://youtube.com" target="_blank">▶️ YouTube</a>
+        <a href="https://t.me" target="_blank">✈️ Telegram</a>
+        <a href="mailto:admin@gmail.com">📧 Gmail</a>
     </footer>
+    
     <script src="script.js"></script>
 </body>
 </html>
