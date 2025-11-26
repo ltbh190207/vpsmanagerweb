@@ -220,6 +220,10 @@ button:active {
     font-size: 1.2rem;
 }
 
+.price-card h2 {
+    border-bottom: none;
+}
+
 /* Links */
 a {
     color: #667eea;
