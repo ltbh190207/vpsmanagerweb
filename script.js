@@ -601,4 +601,4 @@ function showAlert(message, type) {
     setTimeout(() => alertDiv.remove(), 3000);
   }
 }
-</DOCUMENT>
+
