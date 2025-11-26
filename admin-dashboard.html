@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -12,15 +12,12 @@
 <body>
     <div class="container">
         <h1>Admin Dashboard</h1>
-
-        <h3>Cập nhật Link Tải VPSManager</h3>
-        <input type="text" id="download-link" placeholder="Dán link tải mới">
-        <button onclick="updateDownloadLink()">Cập nhật Link</button>
-
-        <h3>Quản lý Người dùng</h3>
+        <h2>Update Link Tải Tool</h2>
+        <input type="text" id="download-link" placeholder="Link tải VPSManager">
+        <button onclick="updateDownloadLink()">Update</button>
+        <h2>Quản lý Người dùng</h2>
         <ul id="user-list"></ul>
-
-        <h3>Key của Admin</h3>
+        <h2>Quản lý Keys</h2>
         <select id="expiration-select">
             <option value="none">Vĩnh viễn</option>
             <option value="1month">1 tháng</option>
@@ -29,11 +26,15 @@
         </select>
         <button onclick="createKey()">Tạo Key</button>
         <ul id="key-list"></ul>
-
-        <br>
-        <button onclick="logout()" class="logout">Đăng xuất</button>
-        <br><a href="index.html">Trang chủ</a>
+        <button onclick="logout()">Đăng xuất</button>
+        <a href="admin.html">Thông tin Admin</a>
     </div>
+    <footer>
+        <a href="https://facebook.com" target="_blank">Facebook</a>
+        <a href="https://youtube.com" target="_blank">YouTube</a>
+        <a href="https://t.me" target="_blank">Telegram</a>
+        <a href="mailto:admin@gmail.com">Gmail</a>
+    </footer>
     <script src="script.js"></script>
 </body>
 </html>
