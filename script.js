@@ -84,7 +84,7 @@ function register() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
   if (password.length < 6) {
-    showAlert('Mật khẩu phải ít nhất 6 ký tự!', 'error');
+    showAlert('Mật khẩu không hợp lệ: Phải ít nhất 6 ký tự!', 'error');
     return;
   }
   fetchSignInMethodsForEmail(auth, email)
@@ -113,7 +113,7 @@ function register() {
               message = 'Email không hợp lệ.';
               break;
             case 'auth/weak-password':
-              message = 'Mật khẩu phải ít nhất 6 ký tự.';
+              message = 'Mật khẩu không hợp lệ: Phải ít nhất 6 ký tự.';
               break;
             case 'auth/email-already-in-use':
               message = 'Email này đã được sử dụng. Hãy thử đăng nhập hoặc sử dụng email khác.';
@@ -155,7 +155,7 @@ function login() {
           message = 'Không tìm thấy tài khoản với email này.';
           break;
         case 'auth/wrong-password':
-          message = 'Mật khẩu không đúng.';
+          message = 'Mật khẩu không hợp lệ.';
           break;
         default:
           // Giữ nguyên message default
