@@ -19,7 +19,6 @@ const db = getFirestore(app);
 
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
 
-// Chờ DOM ready để attach events
 document.addEventListener('DOMContentLoaded', () => {
     // Attach events cho các trang cụ thể
     if (document.getElementById('login-btn')) {
@@ -66,35 +65,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach logout nếu có
     const logoutBtns = document.querySelectorAll('#logout-btn');
     logoutBtns.forEach(btn => btn.addEventListener('click', logout));
-});
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-      // Redirect to dashboard khi đã đăng nhập
-      getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
-        if (docSnap.exists()) {
-          const role = docSnap.data().role;
-          window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+          // Redirect to dashboard khi đã đăng nhập
+          getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
+            if (docSnap.exists()) {
+              const role = docSnap.data().role;
+              window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
+            }
+          });
         }
-      });
-    }
-    loadKeys(user);
-    loadUserInfo(user);
-    if (window.location.pathname.includes('admin-dashboard.html')) {
-      loadUsers();
-      loadDownloadLink();
-      loadUsersForAddBalance();
-    }
-    if (window.location.pathname.includes('user-dashboard.html')) {
-      loadUserBalance(user);
-      loadSecondaryPasswordSettings(user);
-    }
-  } else {
-    if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
-      window.location.href = 'login.html';
-    }
-  }
+        loadKeys(user);
+        loadUserInfo(user);
+        if (window.location.pathname.includes('admin-dashboard.html')) {
+          loadUsers();
+          loadDownloadLink();
+          loadUsersForAddBalance();
+        }
+        if (window.location.pathname.includes('user-dashboard.html')) {
+          loadUserBalance(user);
+          loadSecondaryPasswordSettings(user);
+        }
+      } else {
+        if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
+          window.location.href = 'login.html';
+        }
+      }
+    });
 });
 
 function register() {
@@ -248,65 +247,64 @@ async function loadKeys(user) {
   if (!keyList) return;
   keyList.innerHTML = '';
   
-  const isAdmin = (await getDoc(doc(db, 'users', user.uid))).data().role === 'admin';
-  const userDoc = await getDoc(doc(db, 'users', user.uid));
-  const enableSecondary = userDoc.data().enableSecondary || false;
-  const secondaryPassword = userDoc.data().secondaryPassword;
+  const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+  const isAdmin = userDocSnap.data().role === 'admin';
+  const enableSecondary = userDocSnap.data().enableSecondary || false;
+  const secondaryPassword = userDocSnap.data().secondaryPassword;
   
-  getDocs(collection(db, 'keys')).then((snapshot) => {
-    snapshot.forEach(async (docSnap) => {
-      const data = docSnap.data();
-      // Admin thấy tất cả, User chỉ thấy key của mình
-      if (!isAdmin && data.bound_user !== user.uid) return;
-      
-      const div = document.createElement('div');
-      div.className = 'key-card';
-      
-      let expText = 'Vĩnh viễn';
-      let expStatus = '';
-      if (data.expiration) {
-        const expDate = data.expiration.toDate();
-        expText = expDate.toLocaleString('vi-VN');
-        expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
-      }
-      
-      const keyDisplay = enableSecondary ? '********' : data.key;
-      const keyClass = enableSecondary ? 'hidden-key' : '';
-      
-      div.innerHTML = `
-        <div class="key-info">
-          <div>
-            <div class="key-code ${keyClass}" data-key="${data.key}">${keyDisplay}</div>
-            <div class="key-meta">
-              📅 Hết hạn: ${expText} ${expStatus}<br>
-              💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
-              ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}<br>📧 Tạo bởi: ${data.createdBy || 'Unknown'}<br>⏰ Thời gian tạo: ${data.createdAt.toDate().toLocaleString('vi-VN')}` : ''}
-            </div>
-          </div>
-          <div class="key-actions">
-            <button class="btn-success show-key-btn" data-key-id="${docSnap.id}">👁️ Hiện Key</button>
-            <button class="btn-success copy-key-btn" data-key="${data.key}">📋 Copy</button>
-            <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
-            <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
+  const snapshot = await getDocs(collection(db, 'keys'));
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    // Admin thấy tất cả, User chỉ thấy key của mình
+    if (!isAdmin && data.bound_user !== user.uid) continue;
+    
+    const div = document.createElement('div');
+    div.className = 'key-card';
+    
+    let expText = 'Vĩnh viễn';
+    let expStatus = '';
+    if (data.expiration) {
+      const expDate = data.expiration.toDate();
+      expText = expDate.toLocaleString('vi-VN');
+      expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
+    }
+    
+    const keyDisplay = enableSecondary ? '********' : data.key;
+    const keyClass = enableSecondary ? 'hidden-key' : '';
+    
+    div.innerHTML = `
+      <div class="key-info">
+        <div>
+          <div class="key-code ${keyClass}" data-key="${data.key}">${keyDisplay}</div>
+          <div class="key-meta">
+            📅 Hết hạn: ${expText} ${expStatus}<br>
+            💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
+            ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}<br>📧 Tạo bởi: ${data.createdBy || 'Unknown'}<br>⏰ Thời gian tạo: ${data.createdAt.toDate().toLocaleString('vi-VN')}` : ''}
           </div>
         </div>
-      `;
-      keyList.appendChild(div);
-    });
+        <div class="key-actions">
+          <button class="btn-success show-key-btn" data-key-id="${docSnap.id}">👁️ Hiện Key</button>
+          <button class="btn-success copy-key-btn" data-key="${data.key}">📋 Copy</button>
+          <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
+          <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
+        </div>
+      </div>
+    `;
+    keyList.appendChild(div);
+  }
 
-    // Attach events cho buttons động
-    keyList.querySelectorAll('.show-key-btn').forEach(btn => {
-      btn.addEventListener('click', () => showKey(btn.dataset.keyId, enableSecondary, secondaryPassword));
-    });
-    keyList.querySelectorAll('.copy-key-btn').forEach(btn => {
-      btn.addEventListener('click', () => copyKey(btn.dataset.key));
-    });
-    keyList.querySelectorAll('.btn-success:not(.show-key-btn):not(.copy-key-btn)').forEach(btn => {
-      btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
-    });
-    keyList.querySelectorAll('.btn-danger').forEach(btn => {
-      btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
-    });
+  // Attach events cho buttons động
+  keyList.querySelectorAll('.show-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => showKey(btn.dataset.keyId, enableSecondary, secondaryPassword));
+  });
+  keyList.querySelectorAll('.copy-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyKey(btn.dataset.key));
+  });
+  keyList.querySelectorAll('.btn-success:not(.show-key-btn):not(.copy-key-btn)').forEach(btn => {
+    btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
+  });
+  keyList.querySelectorAll('.btn-danger').forEach(btn => {
+    btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
   });
 }
 
@@ -337,32 +335,31 @@ function deleteKey(keyId) {
   });
 }
 
-function loadUsers() {
+async function loadUsers() {
   const userList = document.getElementById('user-list');
   if (!userList) return;
   userList.innerHTML = '';
   
-  getDocs(collection(db, 'users')).then((snapshot) => {
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const div = document.createElement('div');
-      div.className = 'user-card';
-      
-      div.innerHTML = `
-        <div class="user-info">
-          <div class="user-email">${data.email}</div>
-          <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
-          <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ<br>⏰ Tạo lúc: ${data.createdAt.toDate().toLocaleString('vi-VN')}</div>
-        </div>
-        <button class="btn-danger" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
-      `;
-      userList.appendChild(div);
-    });
+  const snapshot = await getDocs(collection(db, 'users'));
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    const div = document.createElement('div');
+    div.className = 'user-card';
+    
+    div.innerHTML = `
+      <div class="user-info">
+        <div class="user-email">${data.email}</div>
+        <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
+        <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ<br>⏰ Tạo lúc: ${data.createdAt.toDate().toLocaleString('vi-VN')}</div>
+      </div>
+      <button class="btn-danger" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
+    `;
+    userList.appendChild(div);
+  }
 
-    // Attach events cho buttons động
-    userList.querySelectorAll('.btn-danger').forEach(btn => {
-      btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.email));
-    });
+  // Attach events cho buttons động
+  userList.querySelectorAll('.btn-danger').forEach(btn => {
+    btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.email));
   });
 }
 
@@ -534,21 +531,20 @@ function loadSecondaryPasswordSettings(user) {
   });
 }
 
-function loadUsersForAddBalance() {
+async function loadUsersForAddBalance() {
   const select = document.getElementById('add-balance-user');
   if (!select) return;
 
-  getDocs(collection(db, 'users')).then((snapshot) => {
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data.role !== 'admin') {
-        const option = document.createElement('option');
-        option.value = docSnap.id;
-        option.textContent = data.email;
-        select.appendChild(option);
-      }
-    });
-  });
+  const snapshot = await getDocs(collection(db, 'users'));
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    if (data.role !== 'admin') {
+      const option = document.createElement('option');
+      option.value = docSnap.id;
+      option.textContent = data.email;
+      select.appendChild(option);
+    }
+  }
 }
 
 function addUserBalance() {
@@ -601,4 +597,3 @@ function showAlert(message, type) {
     setTimeout(() => alertDiv.remove(), 3000);
   }
 }
-
