@@ -1,4 +1,4 @@
-<DOCUMENT filename="style.css">
+
 /* Reset & Base Styles */
 * {
     margin: 0;
@@ -435,4 +435,4 @@ button:active {
 .hidden-key.visible {
     filter: none;
 }
-</DOCUMENT>
+
