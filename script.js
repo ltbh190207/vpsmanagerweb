@@ -1,7 +1,7 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
@@ -229,7 +229,7 @@ function createKey() {
     createdBy: user.email
   }).then(() => {
     showAlert('Tạo key thành công!', 'success');
-    // loadKeys is real-time, no need to reload
+    loadKeys(user);
   });
 }
 
@@ -239,80 +239,78 @@ function resetKey(keyId) {
     bound_user: null
   }).then(() => {
     showAlert('Reset key thành công!', 'success');
-    // loadKeys is real-time
+    loadKeys(auth.currentUser);
   });
 }
 
-function loadKeys(user) {
+async function loadKeys(user) {
   const keyList = document.getElementById('key-list');
   if (!keyList) return;
+  keyList.innerHTML = '';
   
-  getDoc(doc(db, 'users', user.uid)).then((userDocSnap) => {
-    const isAdmin = userDocSnap.data().role === 'admin';
-    const enableSecondary = userDocSnap.data().enableSecondary || false;
-    const secondaryPassword = userDocSnap.data().secondaryPassword;
+  const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+  const isAdmin = userDocSnap.data().role === 'admin';
+  const enableSecondary = userDocSnap.data().enableSecondary || false;
+  const secondaryPassword = userDocSnap.data().secondaryPassword;
+  
+  let keysQuery;
+  if (isAdmin) {
+    keysQuery = collection(db, 'keys');
+  } else {
+    keysQuery = query(collection(db, 'keys'), where('bound_user', '==', user.uid));
+  }
+  
+  const snapshot = await getDocs(keysQuery);
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
     
-    let keysQuery;
-    if (isAdmin) {
-      keysQuery = collection(db, 'keys');
-    } else {
-      keysQuery = query(collection(db, 'keys'), where('bound_user', '==', user.uid));
+    const div = document.createElement('div');
+    div.className = 'key-card';
+    
+    let expText = 'Vĩnh viễn';
+    let expStatus = '';
+    if (data.expiration) {
+      const expDate = data.expiration.toDate();
+      expText = expDate.toLocaleString('vi-VN');
+      expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
     }
     
-    onSnapshot(keysQuery, (snapshot) => {
-      keyList.innerHTML = '';
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        
-        const div = document.createElement('div');
-        div.className = 'key-card';
-        
-        let expText = 'Vĩnh viễn';
-        let expStatus = '';
-        if (data.expiration) {
-          const expDate = data.expiration.toDate();
-          expText = expDate.toLocaleString('vi-VN');
-          expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
-        }
-        
-        const keyDisplay = enableSecondary ? '********' : data.key;
-        const keyClass = enableSecondary ? 'hidden-key' : '';
-        
-        div.innerHTML = `
-          <div class="key-info">
-            <div>
-              <div class="key-code ${keyClass}" data-key="${data.key}">${keyDisplay}</div>
-              <div class="key-meta">
-                📅 Hết hạn: ${expText} ${expStatus}<br>
-                💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
-                ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}<br>📧 Tạo bởi: ${data.createdBy || 'Unknown'}<br>⏰ Thời gian tạo: ${data.createdAt.toDate().toLocaleString('vi-VN')}` : ''}
-              </div>
-            </div>
-            <div class="key-actions">
-              <button class="btn-success show-key-btn" data-key-id="${docSnap.id}">👁️ Hiện Key</button>
-              <button class="btn-success copy-key-btn" data-key="${data.key}">📋 Copy</button>
-              <button class="btn-success reset-key-btn" data-key-id="${docSnap.id}">Reset</button>
-              <button class="btn-danger delete-key-btn" data-key-id="${docSnap.id}">Xóa</button>
-            </div>
+    const keyDisplay = enableSecondary ? '********' : data.key;
+    const keyClass = enableSecondary ? 'hidden-key' : '';
+    
+    div.innerHTML = `
+      <div class="key-info">
+        <div>
+          <div class="key-code ${keyClass}" data-key="${data.key}">${keyDisplay}</div>
+          <div class="key-meta">
+            📅 Hết hạn: ${expText} ${expStatus}<br>
+            💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
+            ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}<br>📧 Tạo bởi: ${data.createdBy || 'Unknown'}<br>⏰ Thời gian tạo: ${data.createdAt.toDate().toLocaleString('vi-VN')}` : ''}
           </div>
-        `;
-        keyList.appendChild(div);
-      });
+        </div>
+        <div class="key-actions">
+          <button class="btn-success show-key-btn" data-key-id="${docSnap.id}">👁️ Hiện Key</button>
+          <button class="btn-success copy-key-btn" data-key="${data.key}">📋 Copy</button>
+          <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
+          <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
+        </div>
+      </div>
+    `;
+    keyList.appendChild(div);
+  }
 
-      // Attach events cho buttons động
-      keyList.querySelectorAll('.show-key-btn').forEach(btn => {
-        btn.addEventListener('click', () => showKey(btn.dataset.keyId, enableSecondary, secondaryPassword));
-      });
-      keyList.querySelectorAll('.copy-key-btn').forEach(btn => {
-        btn.addEventListener('click', () => copyKey(btn.dataset.key));
-      });
-      keyList.querySelectorAll('.reset-key-btn').forEach(btn => {
-        btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
-      });
-      keyList.querySelectorAll('.delete-key-btn').forEach(btn => {
-        btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
-      });
-    });
+  // Attach events cho buttons động
+  keyList.querySelectorAll('.show-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => showKey(btn.dataset.keyId, enableSecondary, secondaryPassword));
+  });
+  keyList.querySelectorAll('.copy-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyKey(btn.dataset.key));
+  });
+  keyList.querySelectorAll('.btn-success:not(.show-key-btn):not(.copy-key-btn)').forEach(btn => {
+    btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
+  });
+  keyList.querySelectorAll('.btn-danger').forEach(btn => {
+    btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
   });
 }
 
@@ -339,36 +337,35 @@ function deleteKey(keyId) {
   if (!confirm('Bạn có chắc muốn xóa key này?')) return;
   deleteDoc(doc(db, `keys`, keyId)).then(() => {
     showAlert('Xóa key thành công!', 'success');
-    // real-time update
+    loadKeys(auth.currentUser);
   });
 }
 
-function loadUsers() {
+async function loadUsers() {
   const userList = document.getElementById('user-list');
   if (!userList) return;
+  userList.innerHTML = '';
   
-  onSnapshot(collection(db, 'users'), (snapshot) => {
-    userList.innerHTML = '';
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const div = document.createElement('div');
-      div.className = 'user-card';
-      
-      div.innerHTML = `
-        <div class="user-info">
-          <div class="user-email">${data.email}</div>
-          <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
-          <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ<br>⏰ Tạo lúc: ${data.createdAt.toDate().toLocaleString('vi-VN')}</div>
-        </div>
-        <button class="btn-danger delete-user-btn" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
-      `;
-      userList.appendChild(div);
-    });
+  const snapshot = await getDocs(collection(db, 'users'));
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    const div = document.createElement('div');
+    div.className = 'user-card';
+    
+    div.innerHTML = `
+      <div class="user-info">
+        <div class="user-email">${data.email}</div>
+        <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
+        <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ<br>⏰ Tạo lúc: ${data.createdAt.toDate().toLocaleString('vi-VN')}</div>
+      </div>
+      <button class="btn-danger" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
+    `;
+    userList.appendChild(div);
+  }
 
-    // Attach events cho buttons động
-    userList.querySelectorAll('.delete-user-btn').forEach(btn => {
-      btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.email));
-    });
+  // Attach events cho buttons động
+  userList.querySelectorAll('.btn-danger').forEach(btn => {
+    btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.email));
   });
 }
 
@@ -376,7 +373,7 @@ function deleteUser(userId, email) {
   if (!confirm(`Xóa user ${email}?`)) return;
   deleteDoc(doc(db, 'users', userId)).then(() => {
     showAlert('Xóa user thành công!', 'success');
-    // real-time update
+    loadUsers();
   });
 }
 
@@ -468,8 +465,8 @@ async function purchaseKey() {
       balance: balance - price
     }).then(() => {
       showAlert('Mua key thành công!', 'success');
+      loadKeys(user);
       loadUserBalance(user);
-      // Since loadKeys is using onSnapshot, it will update automatically
     });
   });
 }
@@ -518,9 +515,18 @@ function setSecondaryPassword() {
     .then(() => showAlert('Thiết lập mật khẩu cấp 2 thành công!', 'success'));
 }
 
-function toggleSecondaryPassword(e) {
+async function toggleSecondaryPassword(e) {
   const user = auth.currentUser;
   const enabled = e.target.checked;
+
+  if (enabled) {
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.data().secondaryPassword) {
+      showAlert('Vui lòng thiết lập mật khẩu cấp 2 trước khi bật!', 'error');
+      e.target.checked = false;
+      return;
+    }
+  }
 
   updateDoc(doc(db, 'users', user.uid), { enableSecondary: enabled })
     .then(() => {
@@ -540,21 +546,20 @@ function loadSecondaryPasswordSettings(user) {
   });
 }
 
-function loadUsersForAddBalance() {
+async function loadUsersForAddBalance() {
   const select = document.getElementById('add-balance-user');
   if (!select) return;
 
-  getDocs(collection(db, 'users')).then((snapshot) => {
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data.role !== 'admin') {
-        const option = document.createElement('option');
-        option.value = docSnap.id;
-        option.textContent = data.email;
-        select.appendChild(option);
-      }
-    });
-  });
+  const snapshot = await getDocs(collection(db, 'users'));
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    if (data.role !== 'admin') {
+      const option = document.createElement('option');
+      option.value = docSnap.id;
+      option.textContent = data.email;
+      select.appendChild(option);
+    }
+  }
 }
 
 function addUserBalance() {
@@ -567,7 +572,7 @@ function addUserBalance() {
     updateDoc(doc(db, 'users', userId), { balance: currentBalance + amount })
       .then(() => {
         showAlert(`Cộng ${amount.toLocaleString('vi-VN')} VNĐ thành công!`, 'success');
-        // loadUsers is real-time
+        loadUsers();
       });
   });
 }
