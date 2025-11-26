@@ -392,85 +392,6 @@ function loadDownloadLink() {
   });
 }
 
-// USER: Mua key với loại và giá khác nhau
-async function purchaseKey() {
-  const user = auth.currentUser;
-  if (!user) return;
-  
-  const userDoc = await getDoc(doc(db, 'users', user.uid));
-  const enableSecondary = userDoc.data().enableSecondary || false;
-  const secondaryPassword = userDoc.data().secondaryPassword;
-  
-  if (enableSecondary) {
-    const input = document.getElementById('purchase-secondary-password').value;
-    if (input !== secondaryPassword) {
-      showAlert('Mật khẩu cấp 2 sai!', 'error');
-      return;
-    }
-  }
-  
-  const keyType = document.getElementById('key-type').value;
-  let price = 0;
-  let expiration = null;
-  
-  switch (keyType) {
-    case 'permanent':
-      price = 100000;
-      break;
-    case 'month':
-      price = 40000;
-      const nowMonth = new Date();
-      nowMonth.setMonth(nowMonth.getMonth() + 1);
-      expiration = Timestamp.fromDate(nowMonth);
-      break;
-    case 'week':
-      price = 20000;
-      const nowWeek = new Date();
-      nowWeek.setDate(nowWeek.getDate() + 7);
-      expiration = Timestamp.fromDate(nowWeek);
-      break;
-    case 'day':
-      price = 5000;
-      const nowDay = new Date();
-      nowDay.setDate(nowDay.getDate() + 1);
-      expiration = Timestamp.fromDate(nowDay);
-      break;
-    default:
-      showAlert('Vui lòng chọn loại key!', 'error');
-      return;
-  }
-  
-  const balance = userDoc.data().balance || 0;
-    
-  if (balance < price) {
-    showAlert(`Số dư không đủ! Cần thêm ${(price - balance).toLocaleString('vi-VN')} VNĐ`, 'error');
-    return;
-  }
-    
-  if (!confirm(`Mua key ${keyType} với giá ${price.toLocaleString('vi-VN')} VNĐ?`)) return;
-    
-  // Tạo key mới với expiration tương ứng
-  const newKey = crypto.randomUUID();
-  addDoc(collection(db, 'keys'), {
-    key: newKey,
-    bound_device: null,
-    bound_user: user.uid,
-    expiration: expiration,
-    createdAt: Timestamp.now(),
-    purchasedAt: Timestamp.now(),
-    createdBy: user.email
-  }).then(() => {
-    // Trừ tiền
-    updateDoc(doc(db, 'users', user.uid), {
-      balance: balance - price
-    }).then(() => {
-      showAlert('Mua key thành công!', 'success');
-      loadKeys(user);
-      loadUserBalance(user);
-    });
-  });
-}
-
 function loadUserBalance(user) {
   getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
     if (docSnap.exists()) {
@@ -518,7 +439,7 @@ function setSecondaryPassword() {
 async function toggleSecondaryPasswordButton() {
   const user = auth.currentUser;
   const button = document.getElementById('toggle-secondary-btn');
-  const currentEnabled = button.textContent.includes('Tắt');
+  const currentEnabled = button.textContent === 'Tắt Mật Khẩu C2';
   const enabled = !currentEnabled;
 
   if (enabled) {
