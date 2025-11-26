@@ -1,132 +1,152 @@
-﻿const firebaseConfig = {
-    // THAY ĐOÀN NÀY BẰNG CONFIG CỦA BẠN
-    apiKey: "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef123456789"
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-const ADMIN_EMAIL = "admin@vpsmanager.com";
+
+const ADMIN_EMAIL = 'admin@vpsmanager.com';
 
 auth.onAuthStateChanged(user => {
-    if (user) {
-        if (location.pathname.includes('login.html') || location.pathname === '/') redirect(user);
-        if (location.pathname.includes('user-dashboard.html') || location.pathname.includes('admin-dashboard.html')) {
-            loadKeys(user);
-            if (location.pathname.includes('admin-dashboard.html')) { loadUsers(); loadDownloadLink(); }
-        }
-    } else {
-        if (location.pathname.includes('user-dashboard.html') || location.pathname.includes('admin-dashboard.html')) {
-            location.href = 'login.html';
-        }
+  if (user) {
+    if (window.location.pathname.includes('login.html') || window.location.pathname === '/') {
+      window.location.href = doc.data().role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
     }
-    if (location.pathname.includes('index.html') || location.pathname === '/') loadDownloadLinkForHome();
+    loadKeys(user);
+    if (window.location.pathname.includes('admin-dashboard.html')) {
+      loadUsers();
+      loadDownloadLink();
+    }
+  } else {
+    if (window.location.pathname.includes('dashboard.html')) {
+      window.location.href = 'login.html';
+    }
+  }
+  if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+    loadDownloadLinkForHome();
+  }
 });
 
-function redirect(user) {
-    db.collection('users').doc(user.uid).get().then(doc => {
-        location.href = (doc.data().role === 'admin') ? 'admin-dashboard.html' : 'user-dashboard.html';
-    });
-}
-
 function register() {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email, pass).then(cred => {
-        db.collection('users').doc(cred.user.uid).set({ email, role: (email === ADMIN_EMAIL) ? 'admin' : 'user', createdAt: new Date() });
-        alert("Đăng ký thành công! Đang chuyển...");
-    }).catch(e => alert(e.message));
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  auth.createUserWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      const user = userCredential.user;
+      db.collection('users').doc(user.uid).set({
+        email: email,
+        role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
+        createdAt: firebase.firestore.Timestamp.now()
+      });
+      // Tự động đăng nhập sau đăng ký
+      login(email, password);
+    })
+    .catch(err => alert(err.message));
 }
 
-function login() {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+function login(email, password) {
+  auth.signInWithEmailAndPassword(email, password)
+    .then(() => alert('Đăng nhập thành công!'))
+    .catch(err => alert(err.message));
 }
 
-function logout() { auth.signOut(); }
+function logout() {
+  auth.signOut();
+}
 
 function createKey() {
-    const user = auth.currentUser;
-    const exp = document.getElementById('expiration-select').value;
-    let expiration = null;
-    if (exp !== 'none') {
-        const d = new Date();
-        if (exp === '1month') d.setMonth(d.getMonth() + 1);
-        if (exp === '3months') d.setMonth(d.getMonth() + 3);
-        if (exp === '1year') d.setFullYear(d.getFullYear() + 1);
-        expiration = firebase.firestore.Timestamp.fromDate(d);
-    }
-    const key = crypto.randomUUID();
-    db.collection(`users/${user.uid}/keys`).add({ key, bound_device: null, expiration }).then(() => loadKeys(user));
-}
-
-function resetKey(id) {
-    const user = auth.currentUser;
-    db.collection(`users/${user.uid}/keys`).doc(id).update({ bound_device: null }).then(() => loadKeys(user));
+  const user = auth.currentUser;
+  if (!user) return;
+  const newKey = crypto.randomUUID();
+  const expirationOption = document.getElementById('expiration-select').value;
+  let expiration = null;
+  if (expirationOption !== 'none') {
+    const now = new Date();
+    if (expirationOption === '1month') now.setMonth(now.getMonth() + 1);
+    else if (expirationOption === '3months') now.setMonth(now.getMonth() + 3);
+    else if (expirationOption === '1year') now.setFullYear(now.getFullYear() + 1);
+    expiration = firebase.firestore.Timestamp.fromDate(now);
+  }
+  db.collection(`users/${user.uid}/keys`).add({
+    key: newKey,
+    bound_device: null,
+    expiration: expiration
+  }).then(() => loadKeys(user));
 }
 
 function loadKeys(user) {
-    const list = document.getElementById('key-list');
-    if (!list) return;
-    list.innerHTML = '';
-    db.collection(`users/${user.uid}/keys`).get().then(snap => {
-        snap.forEach(doc => {
-            const d = doc.data();
-            const li = document.createElement('li');
-            const exp = d.expiration ? new Date(d.expiration.seconds * 1000).toLocaleDateString() : 'Vĩnh viễn';
-            li.innerHTML = `${d.key}<br><small>Hết hạn: ${exp} | Máy: ${d.bound_device || 'Chưa bind'}</small>`;
-            const reset = document.createElement('button'); reset.textContent = 'Reset'; reset.onclick = () => resetKey(doc.id);
-            const del = document.createElement('button'); del.textContent = 'Xóa'; del.onclick = () => doc.ref.delete().then(() => loadKeys(user));
-            li.append(reset, del);
-            list.appendChild(li);
-        });
+  const keyList = document.getElementById('key-list');
+  if (!keyList) return;
+  keyList.innerHTML = '';
+  db.collection(`users/${user.uid}/keys`).get().then(snapshot => {
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const li = document.createElement('li');
+      let expText = data.expiration ? new Date(data.expiration.seconds * 1000).toLocaleDateString() : 'Vĩnh viễn';
+      li.textContent = `${data.key} (Exp: ${expText}) (Bound: ${data.bound_device || 'Chưa bind'})`;
+      const resetBtn = document.createElement('button');
+      resetBtn.textContent = 'Reset';
+      resetBtn.onclick = () => db.collection(`users/${user.uid}/keys`).doc(doc.id).update({bound_device: null}).then(() => loadKeys(user));
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Xóa';
+      deleteBtn.onclick = () => db.collection(`users/${user.uid}/keys`).doc(doc.id).delete().then(() => loadKeys(user));
+      li.appendChild(resetBtn);
+      li.appendChild(deleteBtn);
+      keyList.appendChild(li);
     });
+  });
 }
 
 function loadUsers() {
-    const list = document.getElementById('user-list');
-    list.innerHTML = '';
-    db.collection('users').get().then(snap => {
-        snap.forEach(doc => {
-            const d = doc.data();
-            const li = document.createElement('li');
-            li.textContent = `${d.email} (${d.role})`;
-            const del = document.createElement('button');
-            del.textContent = 'Xóa user';
-            del.onclick = () => { if (confirm('Xóa user này?')) { doc.ref.delete(); db.collection(`users/${doc.id}/keys`).get().then(s => s.forEach(k => k.ref.delete())); loadUsers(); } }
-            li.appendChild(del);
-            list.appendChild(li);
-        });
+  const userList = document.getElementById('user-list');
+  if (!userList) return;
+  userList.innerHTML = '';
+  db.collection('users').get().then(snapshot => {
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const li = document.createElement('li');
+      li.textContent = `${data.email} (Role: ${data.role})`;
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Xóa User';
+      deleteBtn.onclick = () => {
+        if (confirm(`Xóa user ${data.email}?`)) {
+          db.collection('users').doc(doc.id).delete();
+          db.collection(`users/${doc.id}/keys`).get().then(snapshot => {
+            snapshot.forEach(keyDoc => keyDoc.ref.delete());
+          });
+          loadUsers();
+        }
+      };
+      li.appendChild(deleteBtn);
+      userList.appendChild(li);
     });
+  });
 }
 
 function updateDownloadLink() {
-    const link = document.getElementById('download-link').value.trim();
-    if (!link) return alert("Nhập link!");
-    db.collection('settings').doc('general').set({ download_link: link }, { merge: true }).then(() => alert("Đã cập nhật link tải!"));
+  const link = document.getElementById('download-link').value;
+  db.collection('settings').doc('general').set({download_link: link}, {merge: true}).then(() => alert('Link updated!'));
 }
 
 function loadDownloadLink() {
-    db.collection('settings').doc('general').get().then(doc => {
-        if (doc.exists && doc.data().download_link) {
-            document.getElementById('download-link').value = doc.data().download_link;
-        }
-    });
+  db.collection('settings').doc('general').get().then(doc => {
+    if (doc.exists) {
+      document.getElementById('download-link').value = doc.data().download_link || '';
+    }
+  });
 }
 
 function loadDownloadLinkForHome() {
-    db.collection('settings').doc('general').get().then(doc => {
-        const btn = document.getElementById('download-btn');
-        if (doc.exists && doc.data().download_link) {
-            btn.onclick = () => window.open(doc.data().download_link, '_blank');
-        } else {
-            btn.onclick = () => alert("Link tải chưa được Admin cập nhật!");
-        }
-    });
+  db.collection('settings').doc('general').get().then(doc => {
+    if (doc.exists) {
+      const btn = document.getElementById('download-btn');
+      btn.onclick = () => window.open(doc.data().download_link, '_blank');
+    }
+  });
 }
