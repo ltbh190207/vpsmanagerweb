@@ -39,10 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('expiration-type').addEventListener('change', toggleExpirationType);
     }
 
-    if (document.getElementById('purchase-key-btn')) {
-        document.getElementById('purchase-key-btn').addEventListener('click', purchaseKey);
-    }
-
     if (document.getElementById('change-password-btn')) {
         document.getElementById('change-password-btn').addEventListener('click', changePassword);
     }
@@ -51,8 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('set-secondary-password-btn').addEventListener('click', setSecondaryPassword);
     }
 
-    if (document.getElementById('enable-secondary-password')) {
-        document.getElementById('enable-secondary-password').addEventListener('change', toggleSecondaryPassword);
+    if (document.getElementById('toggle-secondary-btn')) {
+        document.getElementById('toggle-secondary-btn').addEventListener('click', toggleSecondaryPasswordButton);
     }
 
     if (document.getElementById('add-balance-btn')) {
@@ -61,6 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (document.getElementById('change-admin-password-btn')) {
         document.getElementById('change-admin-password-btn').addEventListener('click', changeAdminPassword);
+    }
+
+    if (document.getElementById('download-vps-btn')) {
+        document.getElementById('download-vps-btn').addEventListener('click', downloadVPSManager);
     }
 
     // Attach logout nếu có
@@ -515,15 +515,16 @@ function setSecondaryPassword() {
     .then(() => showAlert('Thiết lập mật khẩu cấp 2 thành công!', 'success'));
 }
 
-async function toggleSecondaryPassword(e) {
+async function toggleSecondaryPasswordButton() {
   const user = auth.currentUser;
-  const enabled = e.target.checked;
+  const button = document.getElementById('toggle-secondary-btn');
+  const currentEnabled = button.textContent.includes('Tắt');
+  const enabled = !currentEnabled;
 
   if (enabled) {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (!userDoc.data().secondaryPassword) {
       showAlert('Vui lòng thiết lập mật khẩu cấp 2 trước khi bật!', 'error');
-      e.target.checked = false;
       return;
     }
   }
@@ -531,6 +532,7 @@ async function toggleSecondaryPassword(e) {
   updateDoc(doc(db, 'users', user.uid), { enableSecondary: enabled })
     .then(() => {
       showAlert(`Mật khẩu cấp 2 đã ${enabled ? 'bật' : 'tắt'}!`, 'success');
+      button.textContent = enabled ? 'Tắt Mật Khẩu C2' : 'Bật Mật Khẩu C2';
       document.getElementById('purchase-secondary-password').style.display = enabled ? 'block' : 'none';
       loadKeys(user); // Reload to apply hiding
     });
@@ -540,7 +542,10 @@ function loadSecondaryPasswordSettings(user) {
   getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
     if (docSnap.exists()) {
       const enabled = docSnap.data().enableSecondary || false;
-      document.getElementById('enable-secondary-password').checked = enabled;
+      const button = document.getElementById('toggle-secondary-btn');
+      if (button) {
+        button.textContent = enabled ? 'Tắt Mật Khẩu C2' : 'Bật Mật Khẩu C2';
+      }
       document.getElementById('purchase-secondary-password').style.display = enabled ? 'block' : 'none';
     }
   });
@@ -610,5 +615,24 @@ function showAlert(message, type) {
     container.insertBefore(alertDiv, container.firstChild);
     
     setTimeout(() => alertDiv.remove(), 3000);
+  }
+}
+
+async function downloadVPSManager() {
+  const user = auth.currentUser;
+  if (!user) return showAlert('Vui lòng đăng nhập!', 'error');
+  
+  const inputKey = document.getElementById('download-key').value;
+  if (!inputKey) return showAlert('Nhập key để tải!', 'error');
+  
+  const q = query(collection(db, 'keys'), where('key', '==', inputKey), where('bound_user', '==', user.uid));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return showAlert('Key không hợp lệ hoặc không thuộc về bạn!', 'error');
+  
+  const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
+  if (settingsDoc.exists() && settingsDoc.data().download_link) {
+    window.open(settingsDoc.data().download_link, '_blank');
+  } else {
+    showAlert('Link tải không khả dụng!', 'error');
   }
 }
