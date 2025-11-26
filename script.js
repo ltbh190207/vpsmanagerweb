@@ -19,6 +19,39 @@ const db = getFirestore(app);
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
 const KEY_PRICE = 100000; // 100k VNĐ per key
 
+// Chờ DOM ready để attach events
+document.addEventListener('DOMContentLoaded', () => {
+    // Attach events cho các trang cụ thể
+    if (document.getElementById('login-btn')) {
+        document.getElementById('login-btn').addEventListener('click', login);
+        document.getElementById('register-btn').addEventListener('click', register);
+    }
+
+    if (document.getElementById('download-btn')) {
+        loadDownloadLinkForHome(); // Nếu cần load ngay
+    }
+
+    if (document.getElementById('update-link-btn')) {
+        document.getElementById('update-link-btn').addEventListener('click', updateDownloadLink);
+    }
+
+    if (document.getElementById('create-key-btn')) {
+        document.getElementById('create-key-btn').addEventListener('click', createKey);
+    }
+
+    if (document.getElementById('expiration-type')) {
+        document.getElementById('expiration-type').addEventListener('change', toggleExpirationType);
+    }
+
+    if (document.getElementById('purchase-key-btn')) {
+        document.getElementById('purchase-key-btn').addEventListener('click', purchaseKey);
+    }
+
+    // Các button logout có thể attach nếu có id, ví dụ thêm id="logout-btn" trong HTML
+    const logoutBtns = document.querySelectorAll('[id="logout-btn"]');
+    logoutBtns.forEach(btn => btn.addEventListener('click', logout));
+});
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
     if (window.location.pathname.includes('login.html') || window.location.pathname === '/') {
@@ -182,12 +215,20 @@ function loadKeys(user) {
               </div>
             </div>
             <div class="key-actions">
-              <button class="btn-success" onclick="resetKey('${docSnap.id}')">Reset</button>
-              <button class="btn-danger" onclick="deleteKey('${docSnap.id}')">Xóa</button>
+              <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
+              <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
             </div>
           </div>
         `;
         keyList.appendChild(div);
+      });
+
+      // Attach events cho buttons động sau khi tạo
+      keyList.querySelectorAll('.btn-success').forEach(btn => {
+        btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
+      });
+      keyList.querySelectorAll('.btn-danger').forEach(btn => {
+        btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
       });
     });
   });
@@ -218,9 +259,14 @@ function loadUsers() {
           <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
           <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ</div>
         </div>
-        <button class="btn-danger" onclick="deleteUser('${docSnap.id}', '${data.email}')">Xóa</button>
+        <button class="btn-danger" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
       `;
       userList.appendChild(div);
+    });
+
+    // Attach events cho buttons động
+    userList.querySelectorAll('.btn-danger').forEach(btn => {
+      btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.email));
     });
   });
 }
@@ -253,7 +299,7 @@ function loadDownloadLinkForHome() {
     if (docSnap.exists()) {
       const btn = document.getElementById('download-btn');
       if (btn) {
-        btn.onclick = () => window.open(docSnap.data().download_link, '_blank');
+        btn.addEventListener('click', () => window.open(docSnap.data().download_link, '_blank'));
       }
     }
   });
@@ -332,7 +378,9 @@ function showAlert(message, type) {
   alertDiv.textContent = message;
   
   const container = document.querySelector('.container');
-  container.insertBefore(alertDiv, container.firstChild);
-  
-  setTimeout(() => alertDiv.remove(), 3000);
+  if (container) {
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => alertDiv.remove(), 3000);
+  }
 }
