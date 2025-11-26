@@ -1,23 +1,18 @@
-const firebaseConfig = {
-   apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
-  authDomain: "vpsmanagerweb.firebaseapp.com",
-  projectId: "vpsmanagerweb",
-  storageBucket: "vpsmanagerweb.firebasestorage.app",
-  messagingSenderId: "851393978130",
-  appId: "1:851393978130:web:24fddef37a51f577565dcb",
-  measurementId: "G-7H51LQGZV0"
-};
-
-const app = firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Sử dụng global Firebase từ HTML module
+const { app, auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp } = window.firebase || {};
 
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
 
-auth.onAuthStateChanged(user => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
     if (window.location.pathname.includes('login.html') || window.location.pathname === '/') {
-      window.location.href = doc.data().role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
+      // Redirect to dashboard
+      getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
+        if (docSnap.exists()) {
+          const role = docSnap.data().role;
+          window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
+        }
+      });
     }
     loadKeys(user);
     if (window.location.pathname.includes('admin-dashboard.html')) {
@@ -25,7 +20,7 @@ auth.onAuthStateChanged(user => {
       loadDownloadLink();
     }
   } else {
-    if (window.location.pathname.includes('dashboard.html')) {
+    if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
       window.location.href = 'login.html';
     }
   }
@@ -37,28 +32,36 @@ auth.onAuthStateChanged(user => {
 function register() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  auth.createUserWithEmailAndPassword(email, password)
+  if (password.length < 6) {
+    alert('Mật khẩu phải ít nhất 6 ký tự!');
+    return;
+  }
+  createUserWithEmailAndPassword(auth, email, password)
     .then((userCredential) => {
       const user = userCredential.user;
-      db.collection('users').doc(user.uid).set({
+      setDoc(doc(db, 'users', user.uid), {
         email: email,
         role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
-        createdAt: firebase.firestore.Timestamp.now()
+        createdAt: Timestamp.now()
+      }).then(() => {
+        alert('Đăng ký thành công! Đang đăng nhập...');
+        // Tự động đăng nhập
+        signInWithEmailAndPassword(auth, email, password);
       });
-      // Tự động đăng nhập sau đăng ký
-      login(email, password);
     })
-    .catch(err => alert(err.message));
+    .catch((error) => alert('Lỗi đăng ký: ' + error.message));
 }
 
-function login(email, password) {
-  auth.signInWithEmailAndPassword(email, password)
+function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  signInWithEmailAndPassword(auth, email, password)
     .then(() => alert('Đăng nhập thành công!'))
-    .catch(err => alert(err.message));
+    .catch((error) => alert('Lỗi đăng nhập: ' + error.message));
 }
 
 function logout() {
-  auth.signOut();
+  signOut(auth);
 }
 
 function createKey() {
@@ -72,12 +75,19 @@ function createKey() {
     if (expirationOption === '1month') now.setMonth(now.getMonth() + 1);
     else if (expirationOption === '3months') now.setMonth(now.getMonth() + 3);
     else if (expirationOption === '1year') now.setFullYear(now.getFullYear() + 1);
-    expiration = firebase.firestore.Timestamp.fromDate(now);
+    expiration = Timestamp.fromDate(now);
   }
-  db.collection(`users/${user.uid}/keys`).add({
+  addDoc(collection(db, `users/${user.uid}/keys`), {
     key: newKey,
     bound_device: null,
     expiration: expiration
+  }).then(() => loadKeys(user));
+}
+
+function resetKey(docId) {
+  const user = auth.currentUser;
+  updateDoc(doc(db, `users/${user.uid}/keys`, docId), {
+    bound_device: null
   }).then(() => loadKeys(user));
 }
 
@@ -85,18 +95,18 @@ function loadKeys(user) {
   const keyList = document.getElementById('key-list');
   if (!keyList) return;
   keyList.innerHTML = '';
-  db.collection(`users/${user.uid}/keys`).get().then(snapshot => {
-    snapshot.forEach(doc => {
-      const data = doc.data();
+  getDocs(collection(db, `users/${user.uid}/keys`)).then((snapshot) => {
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
       const li = document.createElement('li');
-      let expText = data.expiration ? new Date(data.expiration.seconds * 1000).toLocaleDateString() : 'Vĩnh viễn';
-      li.textContent = `${data.key} (Exp: ${expText}) (Bound: ${data.bound_device || 'Chưa bind'})`;
+      let expText = data.expiration ? data.expiration.toDate().toLocaleDateString() : 'Vĩnh viễn';
+      li.textContent = `${data.key} (Hết hạn: ${expText}) (Máy: ${data.bound_device || 'Chưa bind'})`;
       const resetBtn = document.createElement('button');
       resetBtn.textContent = 'Reset';
-      resetBtn.onclick = () => db.collection(`users/${user.uid}/keys`).doc(doc.id).update({bound_device: null}).then(() => loadKeys(user));
+      resetBtn.onclick = () => resetKey(docSnap.id);
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = 'Xóa';
-      deleteBtn.onclick = () => db.collection(`users/${user.uid}/keys`).doc(doc.id).delete().then(() => loadKeys(user));
+      deleteBtn.onclick = () => deleteDoc(doc(db, `users/${user.uid}/keys`, docSnap.id)).then(() => loadKeys(user));
       li.appendChild(resetBtn);
       li.appendChild(deleteBtn);
       keyList.appendChild(li);
@@ -108,18 +118,18 @@ function loadUsers() {
   const userList = document.getElementById('user-list');
   if (!userList) return;
   userList.innerHTML = '';
-  db.collection('users').get().then(snapshot => {
-    snapshot.forEach(doc => {
-      const data = doc.data();
+  getDocs(collection(db, 'users')).then((snapshot) => {
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
       const li = document.createElement('li');
       li.textContent = `${data.email} (Role: ${data.role})`;
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = 'Xóa User';
       deleteBtn.onclick = () => {
         if (confirm(`Xóa user ${data.email}?`)) {
-          db.collection('users').doc(doc.id).delete();
-          db.collection(`users/${doc.id}/keys`).get().then(snapshot => {
-            snapshot.forEach(keyDoc => keyDoc.ref.delete());
+          deleteDoc(doc(db, 'users', docSnap.id));
+          getDocs(collection(db, `users/${docSnap.id}/keys`)).then((keySnapshot) => {
+            keySnapshot.forEach((kDoc) => deleteDoc(kDoc.ref));
           });
           loadUsers();
         }
@@ -132,22 +142,27 @@ function loadUsers() {
 
 function updateDownloadLink() {
   const link = document.getElementById('download-link').value;
-  db.collection('settings').doc('general').set({download_link: link}, {merge: true}).then(() => alert('Link updated!'));
+  if (!link) return alert('Nhập link!');
+  setDoc(doc(db, 'settings', 'general'), { download_link: link }, { merge: true }).then(() => alert('Link updated!'));
 }
 
 function loadDownloadLink() {
-  db.collection('settings').doc('general').get().then(doc => {
-    if (doc.exists) {
-      document.getElementById('download-link').value = doc.data().download_link || '';
+  getDoc(doc(db, 'settings', 'general')).then((docSnap) => {
+    if (docSnap.exists()) {
+      document.getElementById('download-link').value = docSnap.data().download_link || '';
     }
   });
 }
 
 function loadDownloadLinkForHome() {
-  db.collection('settings').doc('general').get().then(doc => {
-    if (doc.exists) {
+  getDoc(doc(db, 'settings', 'general')).then((docSnap) => {
+    if (docSnap.exists()) {
       const btn = document.getElementById('download-btn');
-      btn.onclick = () => window.open(doc.data().download_link, '_blank');
+      btn.onclick = () => window.open(docSnap.data().download_link, '_blank');
     }
   });
+}
+
+function getDoc(ref) {
+  return getDoc(ref);  // Helper cho redirect
 }
