@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - VPS Manager</title>
     <link rel="stylesheet" href="style.css">
-    
-    
 </head>
 <body>
     <div class="container">
@@ -23,7 +21,7 @@
             <h2 style="color: #fff;">🔑 Mua Key</h2>
             <div class="price-amount">100,000 VNĐ</div>
             <p>Mỗi key có giá 100,000 VNĐ</p>
-            <button onclick="purchaseKey()" style="background: #fff; color: #56ab2f; font-size: 1.2rem; padding: 15px 40px;">
+            <button id="purchase-key-btn" style="background: #fff; color: #56ab2f; font-size: 1.2rem; padding: 15px 40px;">
                 💳 Mua Key Ngay
             </button>
         </div>
@@ -32,7 +30,7 @@
         <div id="key-list"></div>
         
         <div style="margin-top: 30px;">
-            <button onclick="logout()" class="btn-secondary">🚪 Đăng xuất</button>
+            <button id="logout-btn" class="btn-secondary">🚪 Đăng xuất</button>
             <a href="admin.html" class="btn">ℹ️ Thông tin Admin</a>
         </div>
     </div>
