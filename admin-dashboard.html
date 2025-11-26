@@ -6,13 +6,11 @@
     <title>Admin Dashboard - VPS Manager</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase SDK v10 Modular -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
             authDomain: "vpsmanagerweb.firebaseapp.com",
@@ -23,58 +21,73 @@
             measurementId: "G-7H51LQGZV0"
         };
         
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Export to global scope
         window.firebase = { 
-            app, 
-            auth, 
-            db, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
-            onAuthStateChanged, 
-            collection, 
-            addDoc, 
-            getDocs, 
-            getDoc, 
-            doc, 
-            setDoc, 
-            updateDoc, 
-            deleteDoc, 
-            Timestamp 
+            app, auth, db, 
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, 
+            collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp 
         };
     </script>
 </head>
 <body>
     <div class="container">
-        <h1>Admin Dashboard</h1>
-        <h2>Update Link Tải Tool</h2>
-        <input type="text" id="download-link" placeholder="Link tải VPSManager">
-        <button onclick="updateDownloadLink()">Update</button>
-        <h2>Quản lý Người dùng</h2>
-        <ul id="user-list"></ul>
-        <h2>Quản lý Keys</h2>
-        <select id="expiration-select">
-            <option value="none">Vĩnh viễn</option>
-            <option value="1month">1 tháng</option>
-            <option value="3months">3 tháng</option>
-            <option value="1year">1 năm</option>
-        </select>
-        <button onclick="createKey()">Tạo Key</button>
-        <ul id="key-list"></ul>
-        <button onclick="logout()">Đăng xuất</button>
-        <a href="admin.html">Thông tin Admin</a>
+        <h1>👑 Admin Dashboard</h1>
+        <p>Quản lý hệ thống VPS Manager</p>
+        
+        <h2>🔗 Cập nhật Link Tải Tool</h2>
+        <input type="text" id="download-link" placeholder="https://example.com/download">
+        <button onclick="updateDownloadLink()">💾 Cập nhật Link</button>
+        
+        <h2>🔑 Tạo Key Mới</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Loại hết hạn:</label>
+                <select id="expiration-type" onchange="toggleExpirationType()">
+                    <option value="none">Vĩnh viễn</option>
+                    <option value="date">Chọn ngày cụ thể</option>
+                    <option value="duration">Thời gian sử dụng</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="date-input" style="display:none;">
+            <input type="datetime-local" id="expiration-date">
+        </div>
+        
+        <div id="duration-input" style="display:none; gap: 10px;">
+            <input type="number" id="duration-value" placeholder="Số lượng" min="1" style="flex: 1;">
+            <select id="duration-unit" style="flex: 1;">
+                <option value="hours">Giờ</option>
+                <option value="days">Ngày</option>
+                <option value="months">Tháng</option>
+                <option value="years">Năm</option>
+            </select>
+        </div>
+        
+        <button onclick="createKey()">✨ Tạo Key</button>
+        
+        <h2>📋 Danh sách Keys</h2>
+        <div id="key-list"></div>
+        
+        <h2>👥 Quản lý Người dùng</h2>
+        <div id="user-list"></div>
+        
+        <div style="margin-top: 30px;">
+            <button onclick="logout()" class="btn-secondary">🚪 Đăng xuất</button>
+            <a href="admin.html" class="btn">ℹ️ Thông tin Admin</a>
+        </div>
     </div>
+    
     <footer>
-        <a href="https://facebook.com" target="_blank">Facebook</a>
-        <a href="https://youtube.com" target="_blank">YouTube</a>
-        <a href="https://t.me" target="_blank">Telegram</a>
-        <a href="mailto:admin@gmail.com">Gmail</a>
+        <a href="https://facebook.com" target="_blank">📘 Facebook</a>
+        <a href="https://youtube.com" target="_blank">▶️ YouTube</a>
+        <a href="https://t.me" target="_blank">✈️ Telegram</a>
+        <a href="mailto:admin@gmail.com">📧 Gmail</a>
     </footer>
+    
     <script src="script.js"></script>
 </body>
 </html>
