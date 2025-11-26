@@ -6,13 +6,11 @@
     <title>Đăng nhập - VPS Manager</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase SDK v10 Modular -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
             authDomain: "vpsmanagerweb.firebaseapp.com",
@@ -23,47 +21,40 @@
             measurementId: "G-7H51LQGZV0"
         };
         
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Export to global scope
         window.firebase = { 
-            app, 
-            auth, 
-            db, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
-            onAuthStateChanged, 
-            collection, 
-            addDoc, 
-            getDocs, 
-            getDoc, 
-            doc, 
-            setDoc, 
-            updateDoc, 
-            deleteDoc, 
-            Timestamp 
+            app, auth, db, 
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, 
+            collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp 
         };
     </script>
 </head>
 <body>
-    <div class="container">
-        <h1>Đăng nhập / Đăng ký</h1>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Mật khẩu">
-        <button onclick="register()">Đăng ký</button>
-        <button onclick="login()">Đăng nhập</button>
-        <a href="index.html">Quay về Trang chủ</a>
+    <div class="container" style="max-width: 500px;">
+        <h1>🔐 Đăng nhập</h1>
+        <p>Chào mừng đến với VPS Key Manager</p>
+        
+        <input type="email" id="email" placeholder="📧 Email của bạn">
+        <input type="password" id="password" placeholder="🔒 Mật khẩu">
+        
+        <button onclick="login()">🚀 Đăng nhập</button>
+        <button onclick="register()" class="btn-secondary">✨ Đăng ký mới</button>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html">← Quay về Trang chủ</a>
+        </div>
     </div>
+    
     <footer>
-        <a href="https://facebook.com" target="_blank">Facebook</a>
-        <a href="https://youtube.com" target="_blank">YouTube</a>
-        <a href="https://t.me" target="_blank">Telegram</a>
-        <a href="mailto:admin@gmail.com">Gmail</a>
+        <a href="https://facebook.com" target="_blank">📘 Facebook</a>
+        <a href="https://youtube.com" target="_blank">▶️ YouTube</a>
+        <a href="https://t.me" target="_blank">✈️ Telegram</a>
+        <a href="mailto:admin@gmail.com">📧 Gmail</a>
     </footer>
+    
     <script src="script.js"></script>
 </body>
 </html>
