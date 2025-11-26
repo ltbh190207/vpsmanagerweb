@@ -1,3 +1,4 @@
+<DOCUMENT filename="admin-dashboard.html">
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -49,6 +50,18 @@
         <h2>👥 Quản lý Người dùng</h2>
         <div id="user-list"></div>
         
+        <h2>💰 Cộng Tiền cho User</h2>
+        <select id="add-balance-user">
+            <option value="">Chọn user</option>
+        </select>
+        <input type="number" id="add-balance-amount" placeholder="Số tiền VNĐ" min="0">
+        <button id="add-balance-btn">➕ Cộng Tiền</button>
+        
+        <h2>🔒 Đổi Mật Khẩu Admin</h2>
+        <input type="password" id="admin-old-password" placeholder="Mật khẩu cũ">
+        <input type="password" id="admin-new-password" placeholder="Mật khẩu mới">
+        <button id="change-admin-password-btn">🔄 Đổi Mật Khẩu</button>
+        
         <div style="margin-top: 30px;">
             <button id="logout-btn" class="btn-secondary">🚪 Đăng xuất</button>
             <a href="admin.html" class="btn">ℹ️ Thông tin Admin</a>
@@ -65,3 +78,4 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
+</DOCUMENT>
