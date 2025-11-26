@@ -416,3 +416,9 @@ footer a:hover {
     margin-bottom: 20px;
     opacity: 0.5;
 }
+/* Hiệu ứng click cho button */
+button:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
