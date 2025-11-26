@@ -107,14 +107,34 @@ function register() {
           });
         })
         .catch((error) => {
-          if (error.code === 'auth/email-already-in-use') {
-            showAlert('Email này đã được sử dụng. Hãy thử đăng nhập hoặc sử dụng email khác.', 'error');
-          } else {
-            showAlert('Lỗi đăng ký: ' + error.message, 'error');
+          let message = 'Lỗi đăng ký không xác định: ' + error.message;
+          switch (error.code) {
+            case 'auth/invalid-email':
+              message = 'Email không hợp lệ.';
+              break;
+            case 'auth/weak-password':
+              message = 'Mật khẩu phải ít nhất 6 ký tự.';
+              break;
+            case 'auth/email-already-in-use':
+              message = 'Email này đã được sử dụng. Hãy thử đăng nhập hoặc sử dụng email khác.';
+              break;
+            default:
+              // Giữ nguyên message default
           }
+          showAlert(message, 'error');
         });
     })
-    .catch((error) => showAlert('Lỗi kiểm tra email: ' + error.message, 'error'));
+    .catch((error) => {
+      let message = 'Lỗi kiểm tra email không xác định: ' + error.message;
+      switch (error.code) {
+        case 'auth/invalid-email':
+          message = 'Email không hợp lệ.';
+          break;
+        default:
+          // Giữ nguyên message default
+      }
+      showAlert(message, 'error');
+    });
 }
 
 function login() {
@@ -122,7 +142,26 @@ function login() {
   const password = document.getElementById('password').value;
   signInWithEmailAndPassword(auth, email, password)
     .then(() => showAlert('Đăng nhập thành công!', 'success'))
-    .catch((error) => showAlert('Lỗi đăng nhập: ' + error.message, 'error'));
+    .catch((error) => {
+      let message = 'Lỗi đăng nhập không xác định: ' + error.message;
+      switch (error.code) {
+        case 'auth/invalid-email':
+          message = 'Email không hợp lệ.';
+          break;
+        case 'auth/invalid-credential':
+          message = 'Email hoặc mật khẩu không đúng.';
+          break;
+        case 'auth/user-not-found':
+          message = 'Không tìm thấy tài khoản với email này.';
+          break;
+        case 'auth/wrong-password':
+          message = 'Mật khẩu không đúng.';
+          break;
+        default:
+          // Giữ nguyên message default
+      }
+      showAlert(message, 'error');
+    });
 }
 
 function logout() {
