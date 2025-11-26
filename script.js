@@ -1,7 +1,7 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
@@ -19,6 +19,7 @@ const db = getFirestore(app);
 
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
 
+// Chờ DOM ready để attach events
 document.addEventListener('DOMContentLoaded', () => {
     // Attach events cho các trang cụ thể
     if (document.getElementById('login-btn')) {
@@ -65,35 +66,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach logout nếu có
     const logoutBtns = document.querySelectorAll('#logout-btn');
     logoutBtns.forEach(btn => btn.addEventListener('click', logout));
+});
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-          // Redirect to dashboard khi đã đăng nhập
-          getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
-            if (docSnap.exists()) {
-              const role = docSnap.data().role;
-              window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
-            }
-          });
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+      // Redirect to dashboard khi đã đăng nhập
+      getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
+        if (docSnap.exists()) {
+          const role = docSnap.data().role;
+          window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
         }
-        loadKeys(user);
-        loadUserInfo(user);
-        if (window.location.pathname.includes('admin-dashboard.html')) {
-          loadUsers();
-          loadDownloadLink();
-          loadUsersForAddBalance();
-        }
-        if (window.location.pathname.includes('user-dashboard.html')) {
-          loadUserBalance(user);
-          loadSecondaryPasswordSettings(user);
-        }
-      } else {
-        if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
-          window.location.href = 'login.html';
-        }
-      }
-    });
+      });
+    }
+    loadKeys(user);
+    loadUserInfo(user);
+    if (window.location.pathname.includes('admin-dashboard.html')) {
+      loadUsers();
+      loadDownloadLink();
+      loadUsersForAddBalance();
+    }
+    if (window.location.pathname.includes('user-dashboard.html')) {
+      loadUserBalance(user);
+      loadSecondaryPasswordSettings(user);
+    }
+  } else {
+    if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
+      window.location.href = 'login.html';
+    }
+  }
 });
 
 function register() {
@@ -252,11 +253,16 @@ async function loadKeys(user) {
   const enableSecondary = userDocSnap.data().enableSecondary || false;
   const secondaryPassword = userDocSnap.data().secondaryPassword;
   
-  const snapshot = await getDocs(collection(db, 'keys'));
+  let keysQuery;
+  if (isAdmin) {
+    keysQuery = collection(db, 'keys');
+  } else {
+    keysQuery = query(collection(db, 'keys'), where('bound_user', '==', user.uid));
+  }
+  
+  const snapshot = await getDocs(keysQuery);
   for (const docSnap of snapshot.docs) {
     const data = docSnap.data();
-    // Admin thấy tất cả, User chỉ thấy key của mình
-    if (!isAdmin && data.bound_user !== user.uid) continue;
     
     const div = document.createElement('div');
     div.className = 'key-card';
