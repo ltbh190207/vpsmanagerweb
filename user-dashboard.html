@@ -1,13 +1,30 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+   <!-- Firebase SDK v10 Modular (module syntax) -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  
+  // Firebase Config (THAY BẰNG CONFIG THẬT CỦA BẠN)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxx",  // Thay bằng thật
+    authDomain: "vpsmanagerweb.firebaseapp.com",  // Thay bằng thật
+    projectId: "vpsmanagerweb",  // Thay bằng thật
+    storageBucket: "vpsmanagerweb.appspot.com",  // Thay bằng thật
+    messagingSenderId: "123456789",  // Thay bằng thật
+    appId: "1:123456789:web:abcdef123456"  // Thay bằng thật
+  };
+  
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  
+  // Export để script.js dùng (global variables)
+  window.firebase = { app, auth, db, initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp };
+</script>
 </head>
 <body>
     <div class="container">
