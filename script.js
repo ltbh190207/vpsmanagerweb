@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -17,7 +17,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
-const KEY_PRICE = 100000; // 100k VNĐ per key
 
 // Chờ DOM ready để attach events
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (document.getElementById('download-btn')) {
-        loadDownloadLinkForHome(); // Nếu cần load ngay
+        loadDownloadLinkForHome(); // Load ngay để attach onclick
     }
 
     if (document.getElementById('update-link-btn')) {
@@ -47,15 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('purchase-key-btn').addEventListener('click', purchaseKey);
     }
 
-    // Các button logout có thể attach nếu có id, ví dụ thêm id="logout-btn" trong HTML
-    const logoutBtns = document.querySelectorAll('[id="logout-btn"]');
+    // Attach logout nếu có
+    const logoutBtns = document.querySelectorAll('#logout-btn');
     logoutBtns.forEach(btn => btn.addEventListener('click', logout));
 });
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    if (window.location.pathname.includes('login.html') || window.location.pathname === '/') {
-      // Redirect to dashboard
+    if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+      // Redirect to dashboard khi đã đăng nhập
       getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
         if (docSnap.exists()) {
           const role = docSnap.data().role;
@@ -88,20 +87,34 @@ function register() {
     showAlert('Mật khẩu phải ít nhất 6 ký tự!', 'error');
     return;
   }
-  createUserWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-      const user = userCredential.user;
-      setDoc(doc(db, 'users', user.uid), {
-        email: email,
-        role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
-        balance: 0,
-        createdAt: Timestamp.now()
-      }).then(() => {
-        showAlert('Đăng ký thành công! Đang đăng nhập...', 'success');
-        signInWithEmailAndPassword(auth, email, password);
-      });
+  fetchSignInMethodsForEmail(auth, email)
+    .then((methods) => {
+      if (methods.length > 0) {
+        showAlert('Email này đã được sử dụng. Hãy thử đăng nhập.', 'error');
+        return;
+      }
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          setDoc(doc(db, 'users', user.uid), {
+            email: email,
+            role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
+            balance: 0,
+            createdAt: Timestamp.now()
+          }).then(() => {
+            showAlert('Đăng ký thành công! Đang tự động đăng nhập...', 'success');
+            signInWithEmailAndPassword(auth, email, password); // Tự đăng nhập, onAuthStateChanged sẽ redirect
+          });
+        })
+        .catch((error) => {
+          if (error.code === 'auth/email-already-in-use') {
+            showAlert('Email này đã được sử dụng. Hãy thử đăng nhập hoặc sử dụng email khác.', 'error');
+          } else {
+            showAlert('Lỗi đăng ký: ' + error.message, 'error');
+          }
+        });
     })
-    .catch((error) => showAlert('Lỗi đăng ký: ' + error.message, 'error'));
+    .catch((error) => showAlert('Lỗi kiểm tra email: ' + error.message, 'error'));
 }
 
 function login() {
@@ -118,7 +131,7 @@ function logout() {
   });
 }
 
-// ADMIN: Tạo key với nhiều tùy chọn
+// ADMIN: Tạo key với nhiều tùy chọn (giữ nguyên)
 function createKey() {
   const user = auth.currentUser;
   if (!user) return;
@@ -223,7 +236,7 @@ function loadKeys(user) {
         keyList.appendChild(div);
       });
 
-      // Attach events cho buttons động sau khi tạo
+      // Attach events cho buttons động
       keyList.querySelectorAll('.btn-success').forEach(btn => {
         btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
       });
@@ -305,48 +318,69 @@ function loadDownloadLinkForHome() {
   });
 }
 
-// USER: Mua key
+// USER: Mua key với loại và giá khác nhau
 function purchaseKey() {
   const user = auth.currentUser;
   if (!user) return;
   
+  const keyType = document.getElementById('key-type').value;
+  let price = 0;
+  let expiration = null;
+  
+  switch (keyType) {
+    case 'permanent':
+      price = 100000;
+      break;
+    case 'month':
+      price = 40000;
+      const nowMonth = new Date();
+      nowMonth.setMonth(nowMonth.getMonth() + 1);
+      expiration = Timestamp.fromDate(nowMonth);
+      break;
+    case 'week':
+      price = 20000;
+      const nowWeek = new Date();
+      nowWeek.setDate(nowWeek.getDate() + 7);
+      expiration = Timestamp.fromDate(nowWeek);
+      break;
+    case 'day':
+      price = 5000;
+      const nowDay = new Date();
+      nowDay.setDate(nowDay.getDate() + 1);
+      expiration = Timestamp.fromDate(nowDay);
+      break;
+    default:
+      showAlert('Vui lòng chọn loại key!', 'error');
+      return;
+  }
+  
   getDoc(doc(db, 'users', user.uid)).then((userDoc) => {
     const balance = userDoc.data().balance || 0;
     
-    if (balance < KEY_PRICE) {
-      showAlert(`Số dư không đủ! Cần thêm ${(KEY_PRICE - balance).toLocaleString('vi-VN')} VNĐ`, 'error');
+    if (balance < price) {
+      showAlert(`Số dư không đủ! Cần thêm ${(price - balance).toLocaleString('vi-VN')} VNĐ`, 'error');
       return;
     }
     
-    if (!confirm(`Mua key với giá ${KEY_PRICE.toLocaleString('vi-VN')} VNĐ?`)) return;
+    if (!confirm(`Mua key ${keyType} với giá ${price.toLocaleString('vi-VN')} VNĐ?`)) return;
     
-    // Tìm key chưa được gán
-    getDocs(collection(db, 'keys')).then((snapshot) => {
-      let availableKey = null;
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (!data.bound_user && !availableKey) {
-          availableKey = { id: docSnap.id, ...data };
-        }
-      });
-      
-      if (!availableKey) {
-        showAlert('Không có key khả dụng! Vui lòng liên hệ Admin.', 'error');
-        return;
-      }
-      
-      // Trừ tiền và gán key
+    // Tạo key mới với expiration tương ứng
+    const newKey = crypto.randomUUID();
+    addDoc(collection(db, 'keys'), {
+      key: newKey,
+      bound_device: null,
+      bound_user: user.uid,
+      expiration: expiration,
+      createdAt: Timestamp.now(),
+      purchasedAt: Timestamp.now()
+    }).then(() => {
+      // Trừ tiền
       updateDoc(doc(db, 'users', user.uid), {
-        balance: balance - KEY_PRICE
+        balance: balance - price
       }).then(() => {
-        updateDoc(doc(db, 'keys', availableKey.id), {
-          bound_user: user.uid,
-          purchasedAt: Timestamp.now()
-        }).then(() => {
-          showAlert('Mua key thành công!', 'success');
-          loadKeys(user);
-          loadUserBalance(user);
-        });
+        showAlert('Mua key thành công!', 'success');
+        loadKeys(user);
+        loadUserBalance(user);
       });
     });
   });
@@ -364,7 +398,7 @@ function loadUserBalance(user) {
   });
 }
 
-// Toggle expiration type
+// Toggle expiration type (cho admin)
 function toggleExpirationType() {
   const type = document.getElementById('expiration-type').value;
   document.getElementById('date-input').style.display = type === 'date' ? 'block' : 'none';
