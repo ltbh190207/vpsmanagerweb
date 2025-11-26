@@ -19,8 +19,13 @@
         
         <div class="price-card" style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
             <h2 style="color: #fff;">🔑 Mua Key</h2>
-            <div class="price-amount">100,000 VNĐ</div>
-            <p>Mỗi key có giá 100,000 VNĐ</p>
+            <select id="key-type" style="margin-bottom: 10px; padding: 10px; width: 100%;">
+                <option value="">Chọn loại key</option>
+                <option value="permanent">Vĩnh viễn - 100,000 VNĐ</option>
+                <option value="month">1 Tháng - 40,000 VNĐ</option>
+                <option value="week">1 Tuần - 20,000 VNĐ</option>
+                <option value="day">1 Ngày - 5,000 VNĐ</option>
+            </select>
             <button id="purchase-key-btn" style="background: #fff; color: #56ab2f; font-size: 1.2rem; padding: 15px 40px;">
                 💳 Mua Key Ngay
             </button>
