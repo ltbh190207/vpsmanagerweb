@@ -8,24 +8,55 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: rgba(255, 255, 255, 0.1); border-radius: 15px; margin-bottom: 20px;">
+        <h1 style="margin: 0; color: #fff;">🚀 VPS Key Manager</h1>
+        <nav style="display: flex; gap: 15px;">
+            <a href="login.html" class="btn" style="font-size: 1rem; width: auto; padding: 10px 20px;">🔑 Đăng nhập</a>
+            <a href="login.html" class="btn btn-secondary" style="font-size: 1rem; width: auto; padding: 10px 20px;">✨ Đăng ký</a>
+            <a href="admin.html" class="btn" style="font-size: 1rem; width: auto; padding: 10px 20px;">ℹ️ Thông tin Admin</a>
+        </nav>
+    </header>
+    
     <div class="container" style="text-align: center;">
-        <h1>🚀 VPS Key Manager</h1>
         <p style="font-size: 1.3rem;">Hệ thống quản lý key VPSManager</p>
         
         <div class="price-card" style="margin: 40px auto; max-width: 600px;">
             <h2 style="color: #fff;">✨ Tính năng nổi bật</h2>
             <div style="text-align: left; padding: 20px;">
-                <p>🔐 Bảo mật cao </p>
+                <p>🔐 Bảo mật cao với Firebase</p>
                 <p>⚡ Kích hoạt key nhanh chóng</p>
                 <p>💎 Hỗ trợ key vĩnh viễn & có hạn</p>
                 <p>💰 Giá chỉ từ 5,000 VNĐ/key</p>
-                
+                <p>📱 Responsive đa nền tảng</p>
             </div>
         </div>
         
-        <div style="margin: 30px 0; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-            <a href="login.html" class="btn" style="font-size: 1.1rem; width: auto;">🔑 Đăng nhập / Đăng ký</a>
-            <a href="admin.html" class="btn btn-secondary" style="font-size: 1.1rem; width: auto;">ℹ️ Thông tin Admin</a>
+        <h2 style="color: #fff; margin-bottom: 20px;">📦 Các gói Key</h2>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
+            <div class="price-card" style="width: 250px; background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
+                <h3 style="color: #fff;">Key Ngày</h3>
+                <p style="font-size: 1.5rem; font-weight: bold;">5,000 VNĐ</p>
+                <p>Hết hạn sau 1 ngày</p>
+                <a href="user-dashboard.html" class="btn" style="width: auto; margin-top: 10px;">💳 Mua Ngay</a>
+            </div>
+            <div class="price-card" style="width: 250px; background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
+                <h3 style="color: #fff;">Key Tuần</h3>
+                <p style="font-size: 1.5rem; font-weight: bold;">20,000 VNĐ</p>
+                <p>Hết hạn sau 1 tuần</p>
+                <a href="user-dashboard.html" class="btn" style="width: auto; margin-top: 10px;">💳 Mua Ngay</a>
+            </div>
+            <div class="price-card" style="width: 250px; background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
+                <h3 style="color: #fff;">Key Tháng</h3>
+                <p style="font-size: 1.5rem; font-weight: bold;">40,000 VNĐ</p>
+                <p>Hết hạn sau 1 tháng</p>
+                <a href="user-dashboard.html" class="btn" style="width: auto; margin-top: 10px;">💳 Mua Ngay</a>
+            </div>
+            <div class="price-card" style="width: 250px; background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
+                <h3 style="color: #fff;">Key Vĩnh Viễn</h3>
+                <p style="font-size: 1.5rem; font-weight: bold;">100,000 VNĐ</p>
+                <p>Sử dụng vĩnh viễn</p>
+                <a href="user-dashboard.html" class="btn" style="width: auto; margin-top: 10px;">💳 Mua Ngay</a>
+            </div>
         </div>
     </div>
     
@@ -39,4 +70,3 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
