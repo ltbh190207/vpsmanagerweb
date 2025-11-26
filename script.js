@@ -2,6 +2,7 @@
 const { app, auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } = window.firebase || {};
 
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
+const KEY_PRICE = 100000; // 100k VNĐ per key
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
@@ -19,6 +20,9 @@ onAuthStateChanged(auth, (user) => {
       loadUsers();
       loadDownloadLink();
     }
+    if (window.location.pathname.includes('user-dashboard.html')) {
+      loadUserBalance(user);
+    }
   } else {
     if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
       window.location.href = 'login.html';
@@ -33,7 +37,7 @@ function register() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
   if (password.length < 6) {
-    alert('Mật khẩu phải ít nhất 6 ký tự!');
+    showAlert('Mật khẩu phải ít nhất 6 ký tự!', 'error');
     return;
   }
   createUserWithEmailAndPassword(auth, email, password)
@@ -42,75 +46,143 @@ function register() {
       setDoc(doc(db, 'users', user.uid), {
         email: email,
         role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
+        balance: 0,
         createdAt: Timestamp.now()
       }).then(() => {
-        alert('Đăng ký thành công! Đang đăng nhập...');
-        // Tự động đăng nhập
+        showAlert('Đăng ký thành công! Đang đăng nhập...', 'success');
         signInWithEmailAndPassword(auth, email, password);
       });
     })
-    .catch((error) => alert('Lỗi đăng ký: ' + error.message));
+    .catch((error) => showAlert('Lỗi đăng ký: ' + error.message, 'error'));
 }
 
 function login() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
   signInWithEmailAndPassword(auth, email, password)
-    .then(() => alert('Đăng nhập thành công!'))
-    .catch((error) => alert('Lỗi đăng nhập: ' + error.message));
+    .then(() => showAlert('Đăng nhập thành công!', 'success'))
+    .catch((error) => showAlert('Lỗi đăng nhập: ' + error.message, 'error'));
 }
 
 function logout() {
-  signOut(auth);
+  signOut(auth).then(() => {
+    window.location.href = 'login.html';
+  });
 }
 
+// ADMIN: Tạo key với nhiều tùy chọn
 function createKey() {
   const user = auth.currentUser;
   if (!user) return;
+  
   const newKey = crypto.randomUUID();
-  const expirationOption = document.getElementById('expiration-select').value;
+  const expirationType = document.getElementById('expiration-type').value;
   let expiration = null;
-  if (expirationOption !== 'none') {
+  
+  if (expirationType === 'date') {
+    const dateInput = document.getElementById('expiration-date').value;
+    if (!dateInput) {
+      showAlert('Vui lòng chọn ngày hết hạn!', 'error');
+      return;
+    }
+    expiration = Timestamp.fromDate(new Date(dateInput));
+  } else if (expirationType === 'duration') {
+    const value = parseInt(document.getElementById('duration-value').value);
+    const unit = document.getElementById('duration-unit').value;
+    if (!value || value <= 0) {
+      showAlert('Vui lòng nhập thời gian hợp lệ!', 'error');
+      return;
+    }
+    
     const now = new Date();
-    if (expirationOption === '1month') now.setMonth(now.getMonth() + 1);
-    else if (expirationOption === '3months') now.setMonth(now.getMonth() + 3);
-    else if (expirationOption === '1year') now.setFullYear(now.getFullYear() + 1);
+    if (unit === 'hours') now.setHours(now.getHours() + value);
+    else if (unit === 'days') now.setDate(now.getDate() + value);
+    else if (unit === 'months') now.setMonth(now.getMonth() + value);
+    else if (unit === 'years') now.setFullYear(now.getFullYear() + value);
+    
     expiration = Timestamp.fromDate(now);
   }
-  addDoc(collection(db, `users/${user.uid}/keys`), {
+  
+  addDoc(collection(db, `keys`), {
     key: newKey,
     bound_device: null,
-    expiration: expiration
-  }).then(() => loadKeys(user));
+    bound_user: null,
+    expiration: expiration,
+    createdAt: Timestamp.now(),
+    createdBy: user.uid
+  }).then(() => {
+    showAlert('Tạo key thành công!', 'success');
+    loadKeys(user);
+  });
 }
 
-function resetKey(docId) {
-  const user = auth.currentUser;
-  updateDoc(doc(db, `users/${user.uid}/keys`, docId), {
+function resetKey(keyId) {
+  updateDoc(doc(db, `keys`, keyId), {
     bound_device: null
-  }).then(() => loadKeys(user));
+  }).then(() => {
+    showAlert('Reset key thành công!', 'success');
+    loadKeys(auth.currentUser);
+  });
 }
 
 function loadKeys(user) {
   const keyList = document.getElementById('key-list');
   if (!keyList) return;
   keyList.innerHTML = '';
-  getDocs(collection(db, `users/${user.uid}/keys`)).then((snapshot) => {
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const li = document.createElement('li');
-      let expText = data.expiration ? data.expiration.toDate().toLocaleDateString() : 'Vĩnh viễn';
-      li.textContent = `${data.key} (Hết hạn: ${expText}) (Máy: ${data.bound_device || 'Chưa bind'})`;
-      const resetBtn = document.createElement('button');
-      resetBtn.textContent = 'Reset';
-      resetBtn.onclick = () => resetKey(docSnap.id);
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = 'Xóa';
-      deleteBtn.onclick = () => deleteDoc(doc(db, `users/${user.uid}/keys`, docSnap.id)).then(() => loadKeys(user));
-      li.appendChild(resetBtn);
-      li.appendChild(deleteBtn);
-      keyList.appendChild(li);
+  
+  getDoc(doc(db, 'users', user.uid)).then((userDoc) => {
+    const isAdmin = userDoc.exists() && userDoc.data().role === 'admin';
+    
+    getDocs(collection(db, 'keys')).then((snapshot) => {
+      if (snapshot.empty) {
+        keyList.innerHTML = '<div class="empty-state"><p>Chưa có key nào</p></div>';
+        return;
+      }
+      
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        
+        // User chỉ thấy key của mình
+        if (!isAdmin && data.bound_user !== user.uid) return;
+        
+        const div = document.createElement('div');
+        div.className = 'key-card';
+        
+        let expText = 'Vĩnh viễn';
+        let expStatus = '';
+        if (data.expiration) {
+          const expDate = data.expiration.toDate();
+          expText = expDate.toLocaleString('vi-VN');
+          expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
+        }
+        
+        div.innerHTML = `
+          <div class="key-info">
+            <div>
+              <div class="key-code">${data.key}</div>
+              <div class="key-meta">
+                📅 Hết hạn: ${expText} ${expStatus}<br>
+                💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
+                ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}` : ''}
+              </div>
+            </div>
+            <div class="key-actions">
+              <button class="btn-success" onclick="resetKey('${docSnap.id}')">Reset</button>
+              <button class="btn-danger" onclick="deleteKey('${docSnap.id}')">Xóa</button>
+            </div>
+          </div>
+        `;
+        keyList.appendChild(div);
+      });
     });
+  });
+}
+
+function deleteKey(keyId) {
+  if (!confirm('Bạn có chắc muốn xóa key này?')) return;
+  deleteDoc(doc(db, `keys`, keyId)).then(() => {
+    showAlert('Xóa key thành công!', 'success');
+    loadKeys(auth.currentUser);
   });
 }
 
@@ -118,32 +190,39 @@ function loadUsers() {
   const userList = document.getElementById('user-list');
   if (!userList) return;
   userList.innerHTML = '';
+  
   getDocs(collection(db, 'users')).then((snapshot) => {
     snapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      const li = document.createElement('li');
-      li.textContent = `${data.email} (Role: ${data.role})`;
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = 'Xóa User';
-      deleteBtn.onclick = () => {
-        if (confirm(`Xóa user ${data.email}?`)) {
-          deleteDoc(doc(db, 'users', docSnap.id));
-          getDocs(collection(db, `users/${docSnap.id}/keys`)).then((keySnapshot) => {
-            keySnapshot.forEach((kDoc) => deleteDoc(kDoc.ref));
-          });
-          loadUsers();
-        }
-      };
-      li.appendChild(deleteBtn);
-      userList.appendChild(li);
+      const div = document.createElement('div');
+      div.className = 'user-card';
+      
+      div.innerHTML = `
+        <div class="user-info">
+          <div class="user-email">${data.email}</div>
+          <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
+          <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ</div>
+        </div>
+        <button class="btn-danger" onclick="deleteUser('${docSnap.id}', '${data.email}')">Xóa</button>
+      `;
+      userList.appendChild(div);
     });
+  });
+}
+
+function deleteUser(userId, email) {
+  if (!confirm(`Xóa user ${email}?`)) return;
+  deleteDoc(doc(db, 'users', userId)).then(() => {
+    showAlert('Xóa user thành công!', 'success');
+    loadUsers();
   });
 }
 
 function updateDownloadLink() {
   const link = document.getElementById('download-link').value;
-  if (!link) return alert('Nhập link!');
-  setDoc(doc(db, 'settings', 'general'), { download_link: link }, { merge: true }).then(() => alert('Link updated!'));
+  if (!link) return showAlert('Nhập link!', 'error');
+  setDoc(doc(db, 'settings', 'general'), { download_link: link }, { merge: true })
+    .then(() => showAlert('Cập nhật link thành công!', 'success'));
 }
 
 function loadDownloadLink() {
@@ -163,4 +242,82 @@ function loadDownloadLinkForHome() {
       }
     }
   });
+}
+
+// USER: Mua key
+function purchaseKey() {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  getDoc(doc(db, 'users', user.uid)).then((userDoc) => {
+    const balance = userDoc.data().balance || 0;
+    
+    if (balance < KEY_PRICE) {
+      showAlert(`Số dư không đủ! Cần thêm ${(KEY_PRICE - balance).toLocaleString('vi-VN')} VNĐ`, 'error');
+      return;
+    }
+    
+    if (!confirm(`Mua key với giá ${KEY_PRICE.toLocaleString('vi-VN')} VNĐ?`)) return;
+    
+    // Tìm key chưa được gán
+    getDocs(collection(db, 'keys')).then((snapshot) => {
+      let availableKey = null;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (!data.bound_user && !availableKey) {
+          availableKey = { id: docSnap.id, ...data };
+        }
+      });
+      
+      if (!availableKey) {
+        showAlert('Không có key khả dụng! Vui lòng liên hệ Admin.', 'error');
+        return;
+      }
+      
+      // Trừ tiền và gán key
+      updateDoc(doc(db, 'users', user.uid), {
+        balance: balance - KEY_PRICE
+      }).then(() => {
+        updateDoc(doc(db, 'keys', availableKey.id), {
+          bound_user: user.uid,
+          purchasedAt: Timestamp.now()
+        }).then(() => {
+          showAlert('Mua key thành công!', 'success');
+          loadKeys(user);
+          loadUserBalance(user);
+        });
+      });
+    });
+  });
+}
+
+function loadUserBalance(user) {
+  getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
+    if (docSnap.exists()) {
+      const balance = docSnap.data().balance || 0;
+      const balanceEl = document.getElementById('user-balance');
+      if (balanceEl) {
+        balanceEl.textContent = balance.toLocaleString('vi-VN');
+      }
+    }
+  });
+}
+
+// Toggle expiration type
+function toggleExpirationType() {
+  const type = document.getElementById('expiration-type').value;
+  document.getElementById('date-input').style.display = type === 'date' ? 'block' : 'none';
+  document.getElementById('duration-input').style.display = type === 'duration' ? 'flex' : 'none';
+}
+
+// Show alert message
+function showAlert(message, type) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'error'}`;
+  alertDiv.textContent = message;
+  
+  const container = document.querySelector('.container');
+  container.insertBefore(alertDiv, container.firstChild);
+  
+  setTimeout(() => alertDiv.remove(), 3000);
 }
