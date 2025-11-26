@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập</title>
+    <title>Đăng nhập / Đăng ký</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
@@ -13,12 +13,17 @@
     <div class="container">
         <h1>Đăng nhập / Đăng ký</h1>
         <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Mật khẩu (tối thiểu 6 ký tự)">
+        <input type="password" id="password" placeholder="Mật khẩu">
         <button onclick="register()">Đăng ký</button>
         <button onclick="login()">Đăng nhập</button>
-        <br><br>
         <a href="index.html">Quay về Trang chủ</a>
     </div>
+    <footer>
+        <a href="https://facebook.com" target="_blank">Facebook</a>
+        <a href="https://youtube.com" target="_blank">YouTube</a>
+        <a href="https://t.me" target="_blank">Telegram</a>
+        <a href="mailto:admin@gmail.com">Gmail</a>
+    </footer>
     <script src="script.js"></script>
 </body>
 </html>
