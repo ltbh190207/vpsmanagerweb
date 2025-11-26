@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - VPS Manager</title>
     <link rel="stylesheet" href="style.css">
-    
-  
 </head>
 <body>
     <div class="container">
@@ -15,13 +13,13 @@
         
         <h2>🔗 Cập nhật Link Tải Tool</h2>
         <input type="text" id="download-link" placeholder="https://example.com/download">
-        <button onclick="updateDownloadLink()">💾 Cập nhật Link</button>
+        <button id="update-link-btn">💾 Cập nhật Link</button>
         
         <h2>🔑 Tạo Key Mới</h2>
         <div class="form-grid">
             <div class="form-group">
                 <label>Loại hết hạn:</label>
-                <select id="expiration-type" onchange="toggleExpirationType()">
+                <select id="expiration-type">
                     <option value="none">Vĩnh viễn</option>
                     <option value="date">Chọn ngày cụ thể</option>
                     <option value="duration">Thời gian sử dụng</option>
@@ -43,7 +41,7 @@
             </select>
         </div>
         
-        <button onclick="createKey()">✨ Tạo Key</button>
+        <button id="create-key-btn">✨ Tạo Key</button>
         
         <h2>📋 Danh sách Keys</h2>
         <div id="key-list"></div>
@@ -52,7 +50,7 @@
         <div id="user-list"></div>
         
         <div style="margin-top: 30px;">
-            <button onclick="logout()" class="btn-secondary">🚪 Đăng xuất</button>
+            <button id="logout-btn" class="btn-secondary">🚪 Đăng xuất</button>
             <a href="admin.html" class="btn">ℹ️ Thông tin Admin</a>
         </div>
     </div>
@@ -64,6 +62,6 @@
         <a href="mailto:admin@gmail.com">📧 Gmail</a>
     </footer>
     
-   <script type="module" src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
