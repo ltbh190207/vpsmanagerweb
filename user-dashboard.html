@@ -1,3 +1,4 @@
+<DOCUMENT filename="user-dashboard.html">
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,20 +12,24 @@
         <h1>👤 User Dashboard</h1>
         <p>Quản lý Keys của bạn</p>
         
-        <div class="price-card">
-            <h2 style="color: #fff;">💰 Số dư tài khoản</h2>
-            <div class="price-amount"><span id="user-balance">0</span> VNĐ</div>
-            <p>Liên hệ Admin để nạp tiền</p>
+        <h2>ℹ️ Thông tin User</h2>
+        <div id="user-info">
+            <p>Email: <span id="user-email"></span></p>
+            <p>Số dư: <span id="user-balance">0</span> VNĐ</p>
         </div>
         
-        <!-- Phần tải VPS Manager với xác thực key -->
-        <div class="price-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <h2 style="color: #fff;">📥 Tải VPS Manager</h2>
-            <p style="color: #fff;">Nhập key của bạn để tải phần mềm</p>
-            <input type="text" id="download-key-input" placeholder="Nhập key của bạn" style="margin-bottom: 10px;">
-            <button id="verify-download-btn" style="background: #fff; color: #667eea; font-size: 1.2rem; padding: 15px 40px;">
-                🔓 Xác thực và Tải
-            </button>
+        <h2>🔒 Đổi Mật Khẩu</h2>
+        <input type="password" id="old-password" placeholder="Mật khẩu cũ">
+        <input type="password" id="new-password" placeholder="Mật khẩu mới">
+        <button id="change-password-btn">🔄 Đổi Mật Khẩu</button>
+        
+        <h2>🔑 Mật Khẩu Cấp 2</h2>
+        <input type="password" id="secondary-password" placeholder="Mật khẩu cấp 2">
+        <button id="set-secondary-password-btn">⚙️ Thiết Lập Mật Khẩu C2</button>
+        <div>
+            <label>
+                <input type="checkbox" id="enable-secondary-password"> Bật Mật Khẩu C2
+            </label>
         </div>
         
         <div class="price-card" style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
@@ -36,6 +41,7 @@
                 <option value="week">1 Tuần - 20,000 VNĐ</option>
                 <option value="day">1 Ngày - 5,000 VNĐ</option>
             </select>
+            <input type="password" id="purchase-secondary-password" placeholder="Mật khẩu C2 (nếu bật)" style="display: none;">
             <button id="purchase-key-btn" style="background: #fff; color: #56ab2f; font-size: 1.2rem; padding: 15px 40px;">
                 💳 Mua Key Ngay
             </button>
@@ -60,3 +66,4 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
+</DOCUMENT>
