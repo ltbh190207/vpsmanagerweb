@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (document.getElementById('purchase-key-btn')) {
         document.getElementById('purchase-key-btn').addEventListener('click', purchaseKey);
+    }
+
+    // Xác thực key để tải VPS Manager
+    if (document.getElementById('verify-download-btn')) {
+        document.getElementById('verify-download-btn').addEventListener('click', verifyAndDownload);
     }
 
     // Attach logout nếu có
@@ -435,6 +440,77 @@ function loadUserBalance(user) {
       }
     }
   });
+}
+
+// XÁC THỰC KEY ĐỂ TẢI VPS MANAGER
+async function verifyAndDownload() {
+  const user = auth.currentUser;
+  if (!user) {
+    showAlert('Vui lòng đăng nhập!', 'error');
+    return;
+  }
+  
+  const keyInput = document.getElementById('download-key-input').value.trim();
+  if (!keyInput) {
+    showAlert('Vui lòng nhập key!', 'error');
+    return;
+  }
+  
+  try {
+    // Tìm key trong database
+    const keysRef = collection(db, 'keys');
+    const q = query(keysRef, where('key', '==', keyInput));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      showAlert('Key không tồn tại!', 'error');
+      return;
+    }
+    
+    const keyDoc = querySnapshot.docs[0];
+    const keyData = keyDoc.data();
+    
+    // Kiểm tra key có thuộc về user hiện tại không
+    if (keyData.bound_user && keyData.bound_user !== user.uid) {
+      showAlert('Key này đã được gán cho tài khoản khác!', 'error');
+      return;
+    }
+    
+    // Kiểm tra key có hết hạn không
+    if (keyData.expiration) {
+      const expDate = keyData.expiration.toDate();
+      if (expDate < new Date()) {
+        showAlert('Key đã hết hạn!', 'error');
+        return;
+      }
+    }
+    
+    // Gán key cho user nếu chưa được gán
+    if (!keyData.bound_user) {
+      await updateDoc(doc(db, 'keys', keyDoc.id), {
+        bound_user: user.uid
+      });
+    }
+    
+    // Lấy link download
+    const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
+    if (!settingsDoc.exists() || !settingsDoc.data().download_link) {
+      showAlert('Link tải chưa được cấu hình. Vui lòng liên hệ Admin!', 'error');
+      return;
+    }
+    
+    const downloadLink = settingsDoc.data().download_link;
+    showAlert('✅ Xác thực thành công! Đang mở link tải...', 'success');
+    
+    // Mở link tải trong tab mới sau 1 giây
+    setTimeout(() => {
+      window.open(downloadLink, '_blank');
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error verifying key:', error);
+    showAlert('Có lỗi xảy ra khi xác thực key!', 'error');
+  }
 }
 
 // Toggle expiration type (cho admin)
