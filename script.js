@@ -1,6 +1,7 @@
+<DOCUMENT filename="script.js">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
@@ -26,10 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('register-btn').addEventListener('click', register);
     }
 
-    if (document.getElementById('download-btn')) {
-        loadDownloadLinkForHome(); // Load ngay để attach onclick
-    }
-
     if (document.getElementById('update-link-btn')) {
         document.getElementById('update-link-btn').addEventListener('click', updateDownloadLink);
     }
@@ -46,9 +43,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('purchase-key-btn').addEventListener('click', purchaseKey);
     }
 
-    // Xác thực key để tải VPS Manager
-    if (document.getElementById('verify-download-btn')) {
-        document.getElementById('verify-download-btn').addEventListener('click', verifyAndDownload);
+    if (document.getElementById('change-password-btn')) {
+        document.getElementById('change-password-btn').addEventListener('click', changePassword);
+    }
+
+    if (document.getElementById('set-secondary-password-btn')) {
+        document.getElementById('set-secondary-password-btn').addEventListener('click', setSecondaryPassword);
+    }
+
+    if (document.getElementById('enable-secondary-password')) {
+        document.getElementById('enable-secondary-password').addEventListener('change', toggleSecondaryPassword);
+    }
+
+    if (document.getElementById('add-balance-btn')) {
+        document.getElementById('add-balance-btn').addEventListener('click', addUserBalance);
+    }
+
+    if (document.getElementById('change-admin-password-btn')) {
+        document.getElementById('change-admin-password-btn').addEventListener('click', changeAdminPassword);
     }
 
     // Attach logout nếu có
@@ -68,20 +80,20 @@ onAuthStateChanged(auth, (user) => {
       });
     }
     loadKeys(user);
+    loadUserInfo(user);
     if (window.location.pathname.includes('admin-dashboard.html')) {
       loadUsers();
       loadDownloadLink();
+      loadUsersForAddBalance();
     }
     if (window.location.pathname.includes('user-dashboard.html')) {
       loadUserBalance(user);
+      loadSecondaryPasswordSettings(user);
     }
   } else {
     if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
       window.location.href = 'login.html';
     }
-  }
-  if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-    loadDownloadLinkForHome();
   }
 });
 
@@ -105,7 +117,9 @@ function register() {
             email: email,
             role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
             balance: 0,
-            createdAt: Timestamp.now()
+            createdAt: Timestamp.now(),
+            secondaryPassword: null,
+            enableSecondary: false
           }).then(() => {
             showAlert('Đăng ký thành công! Đang tự động đăng nhập...', 'success');
             signInWithEmailAndPassword(auth, email, password); // Tự đăng nhập, onAuthStateChanged sẽ redirect
@@ -194,27 +208,25 @@ function createKey() {
   } else if (expirationType === 'duration') {
     const value = parseInt(document.getElementById('duration-value').value);
     const unit = document.getElementById('duration-unit').value;
-    if (!value || value <= 0) {
-      showAlert('Vui lòng nhập thời gian hợp lệ!', 'error');
+    if (!value) {
+      showAlert('Vui lòng nhập số lượng!', 'error');
       return;
     }
-    
     const now = new Date();
     if (unit === 'hours') now.setHours(now.getHours() + value);
     else if (unit === 'days') now.setDate(now.getDate() + value);
     else if (unit === 'months') now.setMonth(now.getMonth() + value);
     else if (unit === 'years') now.setFullYear(now.getFullYear() + value);
-    
     expiration = Timestamp.fromDate(now);
   }
-  
-  addDoc(collection(db, `keys`), {
+
+  addDoc(collection(db, 'keys'), {
     key: newKey,
     bound_device: null,
     bound_user: null,
     expiration: expiration,
     createdAt: Timestamp.now(),
-    createdBy: user.uid
+    createdBy: user.email
   }).then(() => {
     showAlert('Tạo key thành công!', 'success');
     loadKeys(user);
@@ -222,73 +234,99 @@ function createKey() {
 }
 
 function resetKey(keyId) {
-  updateDoc(doc(db, `keys`, keyId), {
-    bound_device: null
+  updateDoc(doc(db, 'keys', keyId), {
+    bound_device: null,
+    bound_user: null
   }).then(() => {
     showAlert('Reset key thành công!', 'success');
     loadKeys(auth.currentUser);
   });
 }
 
-function loadKeys(user) {
+async function loadKeys(user) {
   const keyList = document.getElementById('key-list');
   if (!keyList) return;
   keyList.innerHTML = '';
   
-  getDoc(doc(db, 'users', user.uid)).then((userDoc) => {
-    const isAdmin = userDoc.exists() && userDoc.data().role === 'admin';
-    
-    getDocs(collection(db, 'keys')).then((snapshot) => {
-      if (snapshot.empty) {
-        keyList.innerHTML = '<div class="empty-state"><p>Chưa có key nào</p></div>';
-        return;
+  const isAdmin = (await getDoc(doc(db, 'users', user.uid))).data().role === 'admin';
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
+  const enableSecondary = userDoc.data().enableSecondary || false;
+  const secondaryPassword = userDoc.data().secondaryPassword;
+  
+  getDocs(collection(db, 'keys')).then((snapshot) => {
+    snapshot.forEach(async (docSnap) => {
+      const data = docSnap.data();
+      // Admin thấy tất cả, User chỉ thấy key của mình
+      if (!isAdmin && data.bound_user !== user.uid) return;
+      
+      const div = document.createElement('div');
+      div.className = 'key-card';
+      
+      let expText = 'Vĩnh viễn';
+      let expStatus = '';
+      if (data.expiration) {
+        const expDate = data.expiration.toDate();
+        expText = expDate.toLocaleString('vi-VN');
+        expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
       }
       
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        
-        // User chỉ thấy key của mình
-        if (!isAdmin && data.bound_user !== user.uid) return;
-        
-        const div = document.createElement('div');
-        div.className = 'key-card';
-        
-        let expText = 'Vĩnh viễn';
-        let expStatus = '';
-        if (data.expiration) {
-          const expDate = data.expiration.toDate();
-          expText = expDate.toLocaleString('vi-VN');
-          expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
-        }
-        
-        div.innerHTML = `
-          <div class="key-info">
-            <div>
-              <div class="key-code">${data.key}</div>
-              <div class="key-meta">
-                📅 Hết hạn: ${expText} ${expStatus}<br>
-                💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
-                ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}` : ''}
-              </div>
-            </div>
-            <div class="key-actions">
-              <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
-              <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
+      const keyDisplay = enableSecondary ? '********' : data.key;
+      const keyClass = enableSecondary ? 'hidden-key' : '';
+      
+      div.innerHTML = `
+        <div class="key-info">
+          <div>
+            <div class="key-code ${keyClass}" data-key="${data.key}">${keyDisplay}</div>
+            <div class="key-meta">
+              📅 Hết hạn: ${expText} ${expStatus}<br>
+              💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
+              ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}<br>📧 Tạo bởi: ${data.createdBy || 'Unknown'}<br>⏰ Thời gian tạo: ${data.createdAt.toDate().toLocaleString('vi-VN')}` : ''}
             </div>
           </div>
-        `;
-        keyList.appendChild(div);
-      });
+          <div class="key-actions">
+            <button class="btn-success show-key-btn" data-key-id="${docSnap.id}">👁️ Hiện Key</button>
+            <button class="btn-success copy-key-btn" data-key="${data.key}">📋 Copy</button>
+            <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
+            <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
+          </div>
+        </div>
+      `;
+      keyList.appendChild(div);
+    });
 
-      // Attach events cho buttons động
-      keyList.querySelectorAll('.btn-success').forEach(btn => {
-        btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
-      });
-      keyList.querySelectorAll('.btn-danger').forEach(btn => {
-        btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
-      });
+    // Attach events cho buttons động
+    keyList.querySelectorAll('.show-key-btn').forEach(btn => {
+      btn.addEventListener('click', () => showKey(btn.dataset.keyId, enableSecondary, secondaryPassword));
+    });
+    keyList.querySelectorAll('.copy-key-btn').forEach(btn => {
+      btn.addEventListener('click', () => copyKey(btn.dataset.key));
+    });
+    keyList.querySelectorAll('.btn-success:not(.show-key-btn):not(.copy-key-btn)').forEach(btn => {
+      btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
+    });
+    keyList.querySelectorAll('.btn-danger').forEach(btn => {
+      btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
     });
   });
+}
+
+function copyKey(key) {
+  navigator.clipboard.writeText(key).then(() => {
+    showAlert('Copy key thành công!', 'success');
+  });
+}
+
+function showKey(keyId, enableSecondary, secondaryPassword) {
+  if (enableSecondary) {
+    const input = prompt('Nhập mật khẩu cấp 2 để hiện key:');
+    if (input !== secondaryPassword) {
+      showAlert('Mật khẩu cấp 2 sai!', 'error');
+      return;
+    }
+  }
+  const keyElement = document.querySelector(`[data-key-id="${keyId}"]`).parentElement.previousSibling.querySelector('.key-code');
+  keyElement.classList.add('visible');
+  keyElement.textContent = keyElement.dataset.key;
 }
 
 function deleteKey(keyId) {
@@ -314,7 +352,7 @@ function loadUsers() {
         <div class="user-info">
           <div class="user-email">${data.email}</div>
           <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
-          <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ</div>
+          <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ<br>⏰ Tạo lúc: ${data.createdAt.toDate().toLocaleString('vi-VN')}</div>
         </div>
         <button class="btn-danger" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
       `;
@@ -351,21 +389,22 @@ function loadDownloadLink() {
   });
 }
 
-function loadDownloadLinkForHome() {
-  getDoc(doc(db, 'settings', 'general')).then((docSnap) => {
-    if (docSnap.exists()) {
-      const btn = document.getElementById('download-btn');
-      if (btn) {
-        btn.addEventListener('click', () => window.open(docSnap.data().download_link, '_blank'));
-      }
-    }
-  });
-}
-
 // USER: Mua key với loại và giá khác nhau
-function purchaseKey() {
+async function purchaseKey() {
   const user = auth.currentUser;
   if (!user) return;
+  
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
+  const enableSecondary = userDoc.data().enableSecondary || false;
+  const secondaryPassword = userDoc.data().secondaryPassword;
+  
+  if (enableSecondary) {
+    const input = document.getElementById('purchase-secondary-password').value;
+    if (input !== secondaryPassword) {
+      showAlert('Mật khẩu cấp 2 sai!', 'error');
+      return;
+    }
+  }
   
   const keyType = document.getElementById('key-type').value;
   let price = 0;
@@ -398,34 +437,33 @@ function purchaseKey() {
       return;
   }
   
-  getDoc(doc(db, 'users', user.uid)).then((userDoc) => {
-    const balance = userDoc.data().balance || 0;
+  const balance = userDoc.data().balance || 0;
     
-    if (balance < price) {
-      showAlert(`Số dư không đủ! Cần thêm ${(price - balance).toLocaleString('vi-VN')} VNĐ`, 'error');
-      return;
-    }
+  if (balance < price) {
+    showAlert(`Số dư không đủ! Cần thêm ${(price - balance).toLocaleString('vi-VN')} VNĐ`, 'error');
+    return;
+  }
     
-    if (!confirm(`Mua key ${keyType} với giá ${price.toLocaleString('vi-VN')} VNĐ?`)) return;
+  if (!confirm(`Mua key ${keyType} với giá ${price.toLocaleString('vi-VN')} VNĐ?`)) return;
     
-    // Tạo key mới với expiration tương ứng
-    const newKey = crypto.randomUUID();
-    addDoc(collection(db, 'keys'), {
-      key: newKey,
-      bound_device: null,
-      bound_user: user.uid,
-      expiration: expiration,
-      createdAt: Timestamp.now(),
-      purchasedAt: Timestamp.now()
+  // Tạo key mới với expiration tương ứng
+  const newKey = crypto.randomUUID();
+  addDoc(collection(db, 'keys'), {
+    key: newKey,
+    bound_device: null,
+    bound_user: user.uid,
+    expiration: expiration,
+    createdAt: Timestamp.now(),
+    purchasedAt: Timestamp.now(),
+    createdBy: user.email
+  }).then(() => {
+    // Trừ tiền
+    updateDoc(doc(db, 'users', user.uid), {
+      balance: balance - price
     }).then(() => {
-      // Trừ tiền
-      updateDoc(doc(db, 'users', user.uid), {
-        balance: balance - price
-      }).then(() => {
-        showAlert('Mua key thành công!', 'success');
-        loadKeys(user);
-        loadUserBalance(user);
-      });
+      showAlert('Mua key thành công!', 'success');
+      loadKeys(user);
+      loadUserBalance(user);
     });
   });
 }
@@ -442,75 +480,105 @@ function loadUserBalance(user) {
   });
 }
 
-// XÁC THỰC KEY ĐỂ TẢI VPS MANAGER
-async function verifyAndDownload() {
+function loadUserInfo(user) {
+  const emailEl = document.getElementById('user-email');
+  if (emailEl) {
+    emailEl.textContent = user.email;
+  }
+  loadUserBalance(user);
+}
+
+function changePassword() {
   const user = auth.currentUser;
-  if (!user) {
-    showAlert('Vui lòng đăng nhập!', 'error');
-    return;
-  }
-  
-  const keyInput = document.getElementById('download-key-input').value.trim();
-  if (!keyInput) {
-    showAlert('Vui lòng nhập key!', 'error');
-    return;
-  }
-  
-  try {
-    // Tìm key trong database
-    const keysRef = collection(db, 'keys');
-    const q = query(keysRef, where('key', '==', keyInput));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      showAlert('Key không tồn tại!', 'error');
-      return;
+  const oldPassword = document.getElementById('old-password').value;
+  const newPassword = document.getElementById('new-password').value;
+
+  // Re-authenticate with old password
+  signInWithEmailAndPassword(auth, user.email, oldPassword)
+    .then(() => {
+      updatePassword(user, newPassword)
+        .then(() => showAlert('Đổi mật khẩu thành công!', 'success'))
+        .catch((error) => showAlert('Lỗi đổi mật khẩu: ' + error.message, 'error'));
+    })
+    .catch(() => showAlert('Mật khẩu cũ sai!', 'error'));
+}
+
+function setSecondaryPassword() {
+  const user = auth.currentUser;
+  const secondary = document.getElementById('secondary-password').value;
+  if (!secondary) return showAlert('Nhập mật khẩu cấp 2!', 'error');
+
+  updateDoc(doc(db, 'users', user.uid), { secondaryPassword: secondary })
+    .then(() => showAlert('Thiết lập mật khẩu cấp 2 thành công!', 'success'));
+}
+
+function toggleSecondaryPassword(e) {
+  const user = auth.currentUser;
+  const enabled = e.target.checked;
+
+  updateDoc(doc(db, 'users', user.uid), { enableSecondary: enabled })
+    .then(() => {
+      showAlert(`Mật khẩu cấp 2 đã ${enabled ? 'bật' : 'tắt'}!`, 'success');
+      document.getElementById('purchase-secondary-password').style.display = enabled ? 'block' : 'none';
+      loadKeys(user); // Reload to apply hiding
+    });
+}
+
+function loadSecondaryPasswordSettings(user) {
+  getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
+    if (docSnap.exists()) {
+      const enabled = docSnap.data().enableSecondary || false;
+      document.getElementById('enable-secondary-password').checked = enabled;
+      document.getElementById('purchase-secondary-password').style.display = enabled ? 'block' : 'none';
     }
-    
-    const keyDoc = querySnapshot.docs[0];
-    const keyData = keyDoc.data();
-    
-    // Kiểm tra key có thuộc về user hiện tại không
-    if (keyData.bound_user && keyData.bound_user !== user.uid) {
-      showAlert('Key này đã được gán cho tài khoản khác!', 'error');
-      return;
-    }
-    
-    // Kiểm tra key có hết hạn không
-    if (keyData.expiration) {
-      const expDate = keyData.expiration.toDate();
-      if (expDate < new Date()) {
-        showAlert('Key đã hết hạn!', 'error');
-        return;
+  });
+}
+
+function loadUsersForAddBalance() {
+  const select = document.getElementById('add-balance-user');
+  if (!select) return;
+
+  getDocs(collection(db, 'users')).then((snapshot) => {
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.role !== 'admin') {
+        const option = document.createElement('option');
+        option.value = docSnap.id;
+        option.textContent = data.email;
+        select.appendChild(option);
       }
-    }
-    
-    // Gán key cho user nếu chưa được gán
-    if (!keyData.bound_user) {
-      await updateDoc(doc(db, 'keys', keyDoc.id), {
-        bound_user: user.uid
+    });
+  });
+}
+
+function addUserBalance() {
+  const userId = document.getElementById('add-balance-user').value;
+  const amount = parseInt(document.getElementById('add-balance-amount').value);
+  if (!userId || !amount || amount <= 0) return showAlert('Chọn user và nhập số tiền hợp lệ!', 'error');
+
+  getDoc(doc(db, 'users', userId)).then((docSnap) => {
+    const currentBalance = docSnap.data().balance || 0;
+    updateDoc(doc(db, 'users', userId), { balance: currentBalance + amount })
+      .then(() => {
+        showAlert(`Cộng ${amount.toLocaleString('vi-VN')} VNĐ thành công!`, 'success');
+        loadUsers();
       });
-    }
-    
-    // Lấy link download
-    const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
-    if (!settingsDoc.exists() || !settingsDoc.data().download_link) {
-      showAlert('Link tải chưa được cấu hình. Vui lòng liên hệ Admin!', 'error');
-      return;
-    }
-    
-    const downloadLink = settingsDoc.data().download_link;
-    showAlert('✅ Xác thực thành công! Đang mở link tải...', 'success');
-    
-    // Mở link tải trong tab mới sau 1 giây
-    setTimeout(() => {
-      window.open(downloadLink, '_blank');
-    }, 1000);
-    
-  } catch (error) {
-    console.error('Error verifying key:', error);
-    showAlert('Có lỗi xảy ra khi xác thực key!', 'error');
-  }
+  });
+}
+
+function changeAdminPassword() {
+  const user = auth.currentUser;
+  const oldPassword = document.getElementById('admin-old-password').value;
+  const newPassword = document.getElementById('admin-new-password').value;
+
+  // Re-authenticate with old password
+  signInWithEmailAndPassword(auth, user.email, oldPassword)
+    .then(() => {
+      updatePassword(user, newPassword)
+        .then(() => showAlert('Đổi mật khẩu admin thành công!', 'success'))
+        .catch((error) => showAlert('Lỗi đổi mật khẩu: ' + error.message, 'error'));
+    })
+    .catch(() => showAlert('Mật khẩu cũ sai!', 'error'));
 }
 
 // Toggle expiration type (cho admin)
@@ -533,3 +601,4 @@ function showAlert(message, type) {
     setTimeout(() => alertDiv.remove(), 3000);
   }
 }
+</DOCUMENT>
