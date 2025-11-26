@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Xin chào User</h1>
+        <p>Tạo key để kích hoạt VPSManager</p>
+        <select id="expiration-select">
+            <option value="none">Vĩnh viễn</option>
+            <option value="1month">1 tháng</option>
+            <option value="3months">3 tháng</option>
+            <option value="1year">1 năm</option>
+        </select>
+        <button onclick="createKey()">Tạo Key Mới</button>
+        <h3>Key của bạn</h3>
+        <ul id="key-list"></ul>
+        <br>
+        <button onclick="logout()" class="logout">Đăng xuất</button>
+        <br><a href="index.html">Trang chủ</a>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
