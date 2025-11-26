@@ -26,29 +26,14 @@
         <h2>🔑 Mật Khẩu Cấp 2</h2>
         <input type="password" id="secondary-password" placeholder="Mật khẩu cấp 2">
         <button id="set-secondary-password-btn">⚙️ Thiết Lập Mật Khẩu C2</button>
-        <div>
-            <label>
-                <input type="checkbox" id="enable-secondary-password"> Bật Mật Khẩu C2
-            </label>
-        </div>
-        
-        <div class="price-card" style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
-            <h2 style="color: #fff;">🔑 Mua Key</h2>
-            <select id="key-type" style="margin-bottom: 10px; padding: 10px; width: 100%;">
-                <option value="">Chọn loại key</option>
-                <option value="permanent">Vĩnh viễn - 100,000 VNĐ</option>
-                <option value="month">1 Tháng - 40,000 VNĐ</option>
-                <option value="week">1 Tuần - 20,000 VNĐ</option>
-                <option value="day">1 Ngày - 5,000 VNĐ</option>
-            </select>
-            <input type="password" id="purchase-secondary-password" placeholder="Mật khẩu C2 (nếu bật)" style="display: none;">
-            <button id="purchase-key-btn" style="background: #fff; color: #56ab2f; font-size: 1.2rem; padding: 15px 40px;">
-                💳 Mua Key Ngay
-            </button>
-        </div>
+        <button id="toggle-secondary-btn">Bật Mật Khẩu C2</button>
         
         <h2>📋 Keys của tôi</h2>
         <div id="key-list"></div>
+        
+        <h2>📥 Tải VPS Manager</h2>
+        <input type="text" id="download-key" placeholder="Nhập key để tải">
+        <button id="download-vps-btn">📥 Tải Tool</button>
         
         <div style="margin-top: 30px;">
             <button id="logout-btn" class="btn-secondary">🚪 Đăng xuất</button>
@@ -66,4 +51,3 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
