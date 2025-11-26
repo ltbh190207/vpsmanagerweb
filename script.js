@@ -1,5 +1,5 @@
 // Sử dụng global Firebase từ HTML module
-const { app, auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp } = window.firebase || {};
+const { app, auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp } = window.firebase || {};
 
 const ADMIN_EMAIL = 'admin@vpsmanager.com';
 
@@ -158,11 +158,9 @@ function loadDownloadLinkForHome() {
   getDoc(doc(db, 'settings', 'general')).then((docSnap) => {
     if (docSnap.exists()) {
       const btn = document.getElementById('download-btn');
-      btn.onclick = () => window.open(docSnap.data().download_link, '_blank');
+      if (btn) {
+        btn.onclick = () => window.open(docSnap.data().download_link, '_blank');
+      }
     }
   });
-}
-
-function getDoc(ref) {
-  return getDoc(ref);  // Helper cho redirect
 }
