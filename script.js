@@ -1,299 +1,277 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+// script.js - VPS Manager Full Working (Firebase Auth + Firestore)
+// Phiên bản phù hợp 100% với HTML bạn gửi
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    onAuthStateChanged, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+    getFirestore, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
+    collection, query, where, serverTimestamp, increment, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+// === THAY CONFIG NÀY BẰNG CỦA BẠN ===
 const firebaseConfig = {
     apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
-    authDomain: "vpsmanagerweb.firebaseapp.com",
-    projectId: "vpsmanagerweb",
-    storageBucket: "vpsmanagerweb.firebasestorage.app",
-    messagingSenderId: "851393978130",
-    appId: "1:851393978130:web:24fddef37a51f577565dcb",
-    measurementId: "G-7H51LQGZV0"
+  authDomain: "vpsmanagerweb.firebaseapp.com",
+  projectId: "vpsmanagerweb",
+  storageBucket: "vpsmanagerweb.firebasestorage.app",
+  messagingSenderId: "851393978130",
+  appId: "1:851393978130:web:24fddef37a51f577565dcb",
+  measurementId: "G-7H51LQGZV0"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const ADMIN_EMAIL = 'admin@vpsmanager.com';
+let currentUser = null;
+let isAdmin = false;
 
-// Sample data for share.html (in production, load from Firebase)
-const tools = [
-    {
-        name: "VPS Auto Installer",
-        description: "Công cụ cài đặt tự động VPS với nhiều tùy chọn",
-        downloadLink: "https://example.com/tool1.zip"
-    },
-    {
-        name: "Key Generator",
-        description: "Tạo key ngẫu nhiên bảo mật cao",
-        downloadLink: "https://example.com/tool2.zip"
-    }
-];
-
-const apis = [
-    {
-        name: "Check IP API",
-        description: "API kiểm tra địa chỉ IP và thông tin liên quan",
-        url: "https://api.example.com/checkip?ip={IP_ADDRESS}"
-    },
-    {
-        name: "Weather API",
-        description: "Lấy thông tin thời tiết theo vị trí",
-        url: "https://api.example.com/weather?location={LOCATION}"
-    },
-    {
-        name: "Currency Exchange API",
-        description: "Tỷ giá hối đoái theo thời gian thực",
-        url: "https://api.example.com/exchange?from={FROM}&to={TO}"
-    }
-];
-
-let currentAPI = '';
-
-// Chờ DOM ready để attach events
-document.addEventListener('DOMContentLoaded', () => {
-    // Attach events cho login form
-    const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            login();
-        });
-    }
-
-    // Attach events cho register form
-    const registerForm = document.getElementById('register-form');
-    if (registerForm) {
-        registerForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            register();
-        });
-    }
-
-    // Attach events cho các phần khác
-    if (document.getElementById('update-link-btn')) {
-        document.getElementById('update-link-btn').addEventListener('click', updateDownloadLink);
-    }
-
-    if (document.getElementById('create-key-btn')) {
-        document.getElementById('create-key-btn').addEventListener('click', createKey);
-    }
-
-    if (document.getElementById('expiration-type')) {
-        document.getElementById('expiration-type').addEventListener('change', toggleExpirationType);
-    }
-
-    if (document.getElementById('change-password-btn')) {
-        document.getElementById('change-password-btn').addEventListener('click', changePassword);
-    }
-
-    if (document.getElementById('set-secondary-password-btn')) {
-        document.getElementById('set-secondary-password-btn').addEventListener('click', setSecondaryPassword);
-    }
-
-    if (document.getElementById('toggle-secondary-btn')) {
-        document.getElementById('toggle-secondary-btn').addEventListener('click', toggleSecondaryPasswordButton);
-    }
-
-    if (document.getElementById('add-balance-btn')) {
-        document.getElementById('add-balance-btn').addEventListener('click', addUserBalance);
-    }
-
-    if (document.getElementById('change-admin-password-btn')) {
-        document.getElementById('change-admin-password-btn').addEventListener('click', changeAdminPassword);
-    }
-
-    if (document.getElementById('download-vps-btn')) {
-        document.getElementById('download-vps-btn').addEventListener('click', downloadVPSManager);
-    }
-
-    // Attach logout nếu có
-    const logoutBtns = document.querySelectorAll('#logout-btn');
-    logoutBtns.forEach(btn => btn.addEventListener('click', logout));
-
-    // Xử lý cho share.html
-    if (window.location.pathname.includes('share.html')) {
-        // Attach events cho buttons in share.html
-        const toolsBtn = document.querySelector('button[onclick="showSection(\'tools\')"]');
-        if (toolsBtn) toolsBtn.addEventListener('click', () => showSection('tools'));
-
-        const apisBtn = document.querySelector('button[onclick="showSection(\'apis\')"]');
-        if (apisBtn) apisBtn.addEventListener('click', () => showSection('apis'));
-
-        const closeSpan = document.querySelector('.close');
-        if (closeSpan) closeSpan.addEventListener('click', closeModal);
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('api-modal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        };
-    }
-});
-
-onAuthStateChanged(auth, (user) => {
+// Kiểm tra đăng nhập toàn site
+onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
     if (user) {
-        if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-            // Redirect to dashboard khi đã đăng nhập
-            getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
-                if (docSnap.exists()) {
-                    const role = docSnap.data().role;
-                    window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
-                }
-            });
-        }
-        loadKeys(user);
-        loadUserInfo(user);
-        if (window.location.pathname.includes('admin-dashboard.html')) {
-            loadUsers();
-            loadDownloadLink();
-            loadUsersForAddBalance();
-        }
-        if (window.location.pathname.includes('user-dashboard.html')) {
-            loadUserBalance(user);
-            loadSecondaryPasswordSettings(user);
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+            isAdmin = snap.data().role === "admin";
+            document.body.classList.add("logged-in");
+            document.body.classList.remove("guest");
+
+            // Tự động chuyển hướng đúng dashboard
+            if (location.pathname.includes("admin-dashboard.html") && !isAdmin) {
+                location.href = "user-dashboard.html";
+            }
+            if (location.pathname.includes("user-dashboard.html") && isAdmin) {
+                loadAdminDashboard();
+            } else if (location.pathname.includes("user-dashboard.html")) {
+                loadUserDashboard();
+            }
+            if (location.pathname.includes("admin-dashboard.html") && isAdmin) {
+                loadAdminDashboard();
+            }
         }
     } else {
-        if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
-            window.location.href = 'login.html';
+        document.body.classList.add("guest");
+        document.body.classList.remove("logged-in");
+        if (location.pathname.includes("user-dashboard.html") || location.pathname.includes("admin-dashboard.html")) {
+            location.href = "login.html";
         }
     }
 });
 
-function login() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            // onAuthStateChanged sẽ xử lý redirect
-        })
-        .catch((error) => {
-            showAlert('Lỗi đăng nhập: ' + error.message, 'error');
-        });
+// ==================== ĐĂNG KÝ ====================
+if (document.getElementById("register-form")) {
+    document.getElementById("register-form").onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("register-email").value.trim();
+        const pass = document.getElementById("register-password").value;
+        const confirm = document.getElementById("register-confirm-password").value;
+
+        if (pass !== confirm) return alert("Mật khẩu xác nhận không khớp!");
+        if (pass.length < 6) return alert("Mật khẩu phải ≥ 6 ký tự!");
+
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, email, pass);
+            await setDoc(doc(db, "users", cred.user.uid), {
+                email: email,
+                balance: 0,
+                role: "user",
+                createdAt: serverTimestamp()
+            });
+            alert("Đăng ký thành công!");
+            location.href = "user-dashboard.html";
+        } catch (err) {
+            alert("Lỗi: " + err.message);
+        }
+    };
 }
 
-function register() {
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const confirmPassword = document.getElementById('register-confirm-password').value;
+// ==================== ĐĂNG NHẬP ====================
+if (document.getElementById("login-form")) {
+    document.getElementById("login-form").onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("login-email").value.trim();
+        const pass = document.getElementById("login-password").value;
 
-    if (password !== confirmPassword) {
-        showAlert('Mật khẩu xác nhận không khớp!', 'error');
-        return;
-    }
-
-    if (password.length < 6) {
-        showAlert('Mật khẩu không hợp lệ: Phải ít nhất 6 ký tự!', 'error');
-        return;
-    }
-
-    fetchSignInMethodsForEmail(auth, email)
-        .then((methods) => {
-            if (methods.length > 0) {
-                showAlert('Email này đã được sử dụng. Hãy thử đăng nhập.', 'error');
-                return;
+        try {
+            const cred = await signInWithEmailAndPassword(auth, email, pass);
+            const snap = await getDoc(doc(db, "users", cred.user.uid));
+            if (snap.data().role === "admin") {
+                location.href = "admin-dashboard.html";
+            } else {
+                location.href = "user-dashboard.html";
             }
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    setDoc(doc(db, 'users', user.uid), {
-                        email: email,
-                        role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
-                        balance: 0,
-                        createdAt: Timestamp.now(),
-                        secondaryPassword: null,
-                        enableSecondary: false
-                    }).then(() => {
-                        showAlert('Đăng ký thành công! Đang tự động đăng nhập...', 'success');
-                        signInWithEmailAndPassword(auth, email, password); // Tự đăng nhập
-                    });
-                })
-                .catch((error) => {
-                    showAlert('Lỗi đăng ký: ' + error.message, 'error');
-                });
-        });
+        } catch (err) {
+            alert("Sai email hoặc mật khẩu!");
+        }
+    };
 }
 
-function logout() {
-    signOut(auth).then(() => {
-        window.location.href = 'index.html';
-    });
-}
-
-// Các function khác giữ nguyên (updateDownloadLink, createKey, toggleExpirationType, changePassword, setSecondaryPassword, toggleSecondaryPasswordButton, loadSecondaryPasswordSettings, loadUsersForAddBalance, addUserBalance, changeAdminPassword, showAlert, downloadVPSManager, v.v.)
-
-// Functions từ share.html inline
-function showSection(section) {
-    document.getElementById('tools-section').style.display = 'none';
-    document.getElementById('apis-section').style.display = 'none';
-
-    if (section === 'tools') {
-        document.getElementById('tools-section').style.display = 'block';
-        loadTools();
-    } else if (section === 'apis') {
-        document.getElementById('apis-section').style.display = 'block';
-        loadAPIs();
+// ==================== ĐĂNG XUẤT ====================
+document.addEventListener("click", async (e) => {
+    if (e.target.id === "logout-btn") {
+        await signOut(auth);
+        location.href = "index.html";
     }
-}
+});
 
-function loadTools() {
-    const toolsList = document.getElementById('tools-list');
-    toolsList.innerHTML = '';
+// ==================== ADMIN DASHBOARD ====================
+async function loadAdminDashboard() {
+    if (!isAdmin) return;
 
-    tools.forEach(tool => {
-        const div = document.createElement('div');
-        div.className = 'key-card';
-        div.innerHTML = `
-            <h3 style="color: #667eea;">${tool.name}</h3>
-            <p>${tool.description}</p>
-            <a href="${tool.downloadLink}" class="btn" style="width: auto; margin-top: 10px;" target="_blank">📥 Tải Tool</a>
-        `;
-        toolsList.appendChild(div);
+    // Load Keys
+    const keysSnap = await getDocs(collection(db, "keys"));
+    const keyList = document.getElementById("key-list");
+    keyList.innerHTML = keysSnap.empty ? "<p>Chưa có key nào</p>" : "";
+    keysSnap.forEach(d => {
+        const data = d.data();
+        const expire = data.expiresAt ? new Date(data.expiresAt.seconds * 1000).toLocaleString("vi-VN") : "Vĩnh viễn";
+        const used = data.usedBy ? "Đã dùng" : "Chưa dùng";
+        keyList.innerHTML += `
+            <div class="key-card">
+                <div class="key-info">
+                    <div>
+                        <div class="key-code">${d.id}</div>
+                        <div class="key-meta">Hết hạn: ${expire} | Trạng thái: ${used}</div>
+                    </div>
+                    <button class="btn-danger" onclick="deleteKey('${d.id}')">Xóa</button>
+                </div>
+            </div>`;
+    });
+
+    // Load Users + Select cộng tiền
+    const usersSnap = await getDocs(collection(db, "users"));
+    const userList = document.getElementById("user-list");
+    const selectUser = document.getElementById("add-balance-user");
+    userList.innerHTML = "";
+    selectUser.innerHTML = '<option value="">Chọn user</option>';
+
+    usersSnap.forEach(d => {
+        const u = d.data();
+        userList.innerHTML += `
+            <div class="user-card">
+                <div class="user-info">
+                    <div class="user-email">${u.email}</div>
+                    <div>Số dư: ${u.balance?.toLocaleString() || 0} VNĐ</div>
+                </div>
+            </div>`;
+        selectUser.innerHTML += `<option value="${d.id}">${u.email} (${u.balance || 0}đ)</option>`;
     });
 }
 
-function loadAPIs() {
-    const apisList = document.getElementById('apis-list');
-    apisList.innerHTML = '';
+// Tạo key mới
+if (document.getElementById("create-key-btn")) {
+    document.getElementById("create-key-btn").onclick = async () => {
+        let expiresAt = null;
+        const type = document.getElementById("expiration-type").value;
 
-    apis.forEach((api, index) => {
-        const div = document.createElement('div');
-        div.className = 'key-card';
-        div.style.cursor = 'pointer';
-        div.innerHTML = `
-            <h3 style="color: #667eea;">${api.name}</h3>
-            <p>${api.description}</p>
-            <button class="btn" style="width: auto; margin-top: 10px;" onclick="showAPIModal(${index})">🔍 Xem API</button>
-        `;
-        apisList.appendChild(div);
+        if (type === "date") {
+            const date = document.getElementById("expiration-date").value;
+            if (!date) return alert("Chọn ngày hết hạn!");
+            expiresAt = new Date(date);
+        } else if (type === "duration") {
+            const val = parseInt(document.getElementById("duration-value").value);
+            const unit = document.getElementById("duration-unit").value;
+            if (!val) return alert("Nhập số lượng!");
+            expiresAt = new Date();
+            if (unit === "hours") expiresAt.setHours(expiresAt.getHours() + val);
+            if (unit === "days") expiresAt.setDate(expiresAt.getDate() + val);
+            if (unit === "months") expiresAt.setMonth(expiresAt.getMonth() + val);
+            if (unit === "years") expiresAt.setFullYear(expiresAt.getFullYear() + val);
+        }
+
+        const key = generateKey();
+        await setDoc(doc(db, "keys", key), {
+            expiresAt: expiresAt ? { seconds: Math.floor(expiresAt / 1000) } : null,
+            usedBy: null,
+            createdAt: serverTimestamp()
+        });
+        alert("Tạo key thành công:\n" + key);
+        loadAdminDashboard();
+    };
+}
+
+// Show/hide input theo loại key
+document.getElementById("expiration-type")?.addEventListener("change", (e) => {
+    document.getElementById("date-input").style.display = e.target.value === "date" ? "block" : "none";
+    document.getElementById("duration-input").style.display = e.target.value === "duration" ? "flex" : "none";
+});
+
+// Cộng tiền
+document.getElementById("add-balance-btn")?.onclick = async () => {
+    const uid = document.getElementById("add-balance-user").value;
+    const amount = parseInt(document.getElementById("add-balance-amount").value);
+    if (!uid || !amount) return alert("Chọn user và nhập số tiền!");
+    await updateDoc(doc(db, "users", uid), { balance: increment(amount) });
+    alert("Cộng tiền thành công!");
+    loadAdminDashboard();
+};
+
+// Xóa key
+window.deleteKey = async (key) => {
+    if (confirm("Xóa key này thật chứ?")) {
+        await deleteDoc(doc(db, "keys", key));
+        loadAdminDashboard();
+    }
+};
+
+// Tạo key ngẫu nhiên đẹp
+function generateKey() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < 16; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+        if (i === 3 || i === 7 || i === 11) result += "-";
+    }
+    return result;
+}
+
+// ==================== USER DASHBOARD ====================
+async function loadUserDashboard() {
+    const snap = await getDoc(doc(db, "users", currentUser.uid));
+    const data = snap.data();
+    document.getElementById("user-email").textContent = currentUser.email;
+    document.getElementById("user-balance").textContent = (data.balance || 0).toLocaleString() + " VNĐ";
+
+    // Keys của user
+    const q = query(collection(db, "keys"), where("usedBy", "==", currentUser.uid));
+    const keysSnap = await getDocs(q);
+    const list = document.getElementById("key-list");
+    list.innerHTML = keysSnap.empty ? "<p>Chưa có key nào</p>" : "";
+    keysSnap.forEach(d => {
+        const k = d.data();
+        const exp = k.expiresAt ? new Date(k.expiresAt.seconds * 1000).toLocaleString("vi-VN") : "Vĩnh viễn";
+        list.innerHTML += `
+            <div class="key-card">
+                <div class="key-code">${d.id}</div>
+                <div class="key-meta">Hết hạn: ${exp}</div>
+            </div>`;
     });
 }
 
-function showAPIModal(index) {
-    const api = apis[index];
-    document.getElementById('modal-title').textContent = api.name;
-    document.getElementById('modal-description').textContent = api.description;
-    document.getElementById('modal-api-url').textContent = api.url;
-    currentAPI = api.url;
-    document.getElementById('api-modal').style.display = 'flex';
+// Dùng key
+document.getElementById("use-key-btn")?.onclick = async () => {
+    const key = document.getElementById("use-key-input").value.trim().toUpperCase();
+    if (!key) return alert("Nhập key!");
 
-    // Attach copy button event (vì button được tạo động)
-    const copyBtn = document.querySelector('#api-modal .btn');
-    if (copyBtn) copyBtn.addEventListener('click', copyAPI);
-}
+    const keyDoc = await getDoc(doc(db, "keys", key));
+    if (!keyDoc.exists()) return alert("Key không tồn tại!");
+    if (keyDoc.data().usedBy) return alert("Key đã được sử dụng!");
 
-function closeModal() {
-    document.getElementById('api-modal').style.display = 'none';
-}
-
-function copyAPI() {
-    navigator.clipboard.writeText(currentAPI).then(() => {
-        alert('✅ Đã copy API!');
+    await updateDoc(doc(db, "keys", key), {
+        usedBy: currentUser.uid,
+        usedAt: serverTimestamp()
     });
-}
+    alert("Kích hoạt key thành công!");
+    loadUserDashboard();
+};
 
-// Các function còn lại từ script gốc (loadKeys, loadUserInfo, loadUsers, loadDownloadLink, v.v.) giữ nguyên, vì chúng đã khớp.
+// Cập nhật link tải tool (lưu vào Firestore)
+document.getElementById("update-link-btn")?.onclick = async () => {
+    const link = document.getElementById("download-link").value.trim();
+    if (!link) return alert("Nhập link!");
+    await setDoc(doc(db, "settings", "download"), { link });
+    alert("Cập nhật link tải thành công!");
+};
