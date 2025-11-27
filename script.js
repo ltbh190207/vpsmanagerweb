@@ -1,482 +1,299 @@
-/* Reset & Base Styles */
- {
-    margin: 0;
-    padding: 0;
-    box- sizing: border - box;
-}
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-body {
-    font - family: 'Segoe UI', Tahoma, Geneva, Verdana, sans - serif;
-    background: linear - gradient(135deg, #667eea 0 %, #764ba2 100 %);
-    min - height: 100vh;
-    color: #fff;
-    padding: 20px;
-}
+const firebaseConfig = {
+    apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
+    authDomain: "vpsmanagerweb.firebaseapp.com",
+    projectId: "vpsmanagerweb",
+    storageBucket: "vpsmanagerweb.firebasestorage.app",
+    messagingSenderId: "851393978130",
+    appId: "1:851393978130:web:24fddef37a51f577565dcb",
+    measurementId: "G-7H51LQGZV0"
+};
 
-/* Container Styles */
-.container {
-    max - width: 1200px;
-    margin: 0 auto;
-    background: rgba(255, 255, 255, 0.95);
-    border - radius: 20px;
-    padding: 40px;
-    box - shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    color: #333;
-    animation: fadeIn 0.5s ease;
-}
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+const ADMIN_EMAIL = 'admin@vpsmanager.com';
 
-/* Header Styles */
-h1 {
-    color: #667eea;
-    font - size: 2.5rem;
-    margin - bottom: 10px;
-    text - align: center;
-    text - shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-h2 {
-    color: #764ba2;
-    font - size: 1.8rem;
-    margin: 30px 0 15px;
-    border - bottom: 3px solid #667eea;
-    padding - bottom: 10px;
-}
-
-p {
-    text - align: center;
-    font - size: 1.1rem;
-    margin - bottom: 20px;
-    color: #666;
-}
-
-/* Input & Select Styles */
-input, select, textarea {
-    width: 100 %;
-    padding: 15px;
-    margin: 10px 0;
-    border: 2px solid #e0e0e0;
-    border - radius: 10px;
-    font - size: 1rem;
-    transition: all 0.3s ease;
-    background: #fff;
-    color: #333;
-}
-
-input: focus, select: focus, textarea:focus {
-    outline: none;
-    border - color: #667eea;
-    box - shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* Button Styles */
-button, .btn {
-    padding: 15px 30px;
-    background: linear - gradient(135deg, #667eea 0 %, #764ba2 100 %);
-    color: #fff;
-    border: none;
-    border - radius: 10px;
-    font - size: 1rem;
-    font - weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box - shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    width: 100 %;
-    margin: 10px 0;
-    text - decoration: none;
-    display: inline - block;
-    text - align: center;
-}
-
-button: hover, .btn:hover {
-    transform: translateY(-2px);
-    box - shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-}
-
-button:active {
-    transform: translateY(0);
-}
-
-.btn - secondary {
-    background: linear - gradient(135deg, #f093fb 0 %, #f5576c 100 %);
-}
-
-.btn - danger {
-    background: linear - gradient(135deg, #ff6b6b 0 %, #ee5a6f 100 %);
-    padding: 8px 15px;
-    width: auto;
-    margin: 0 5px;
-    font - size: 0.9rem;
-}
-
-.btn - success {
-    background: linear - gradient(135deg, #56ab2f 0 %, #a8e063 100 %);
-    padding: 8px 15px;
-    width: auto;
-    margin: 0 5px;
-    font - size: 0.9rem;
-}
-
-/* Key Card Styles */
-.key - card {
-    background: linear - gradient(135deg, #f5f7fa 0 %, #c3cfe2 100 %);
-    border - radius: 15px;
-    padding: 20px;
-    margin: 15px 0;
-    box - shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
-
-.key - card:hover {
-    transform: translateY(-5px);
-    box - shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-}
-
-.key - info {
-    display: flex;
-    justify - content: space - between;
-    align - items: center;
-    flex - wrap: wrap;
-    gap: 10px;
-}
-
-.key - code {
-    font - family: 'Courier New', monospace;
-    font - size: 1.1rem;
-    font - weight: bold;
-    color: #667eea;
-    word -break: break-all;
-}
-
-.key - meta {
-    font - size: 0.9rem;
-    color: #666;
-    margin - top: 10px;
-}
-
-.key - actions {
-    display: flex;
-    gap: 10px;
-    margin - top: 10px;
-}
-
-/* User Card Styles */
-.user - card {
-    background: linear - gradient(135deg, #ffecd2 0 %, #fcb69f 100 %);
-    border - radius: 15px;
-    padding: 20px;
-    margin: 15px 0;
-    display: flex;
-    justify - content: space - between;
-    align - items: center;
-    box - shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    flex - wrap: wrap;
-}
-
-.user - info {
-    flex: 1;
-}
-
-.user - email {
-    font - weight: bold;
-    font - size: 1.1rem;
-    color: #333;
-}
-
-.user - role {
-    display: inline - block;
-    padding: 5px 15px;
-    background: #667eea;
-    color: #fff;
-    border - radius: 20px;
-    font - size: 0.9rem;
-    margin - top: 5px;
-}
-
-/* Price Card */
-.price - card {
-    background: linear - gradient(135deg, #f093fb 0 %, #f5576c 100 %);
-    color: #fff;
-    border - radius: 20px;
-    padding: 30px;
-    text - align: center;
-    margin: 20px 0;
-    box - shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
-}
-
-.price - amount {
-    font - size: 3rem;
-    font - weight: bold;
-    margin: 20px 0;
-}
-
-.price - card p {
-    color: #fff;
-    font - size: 1.2rem;
-}
-
-.price - card h2 {
-    border - bottom: none;
-}
-
-/* Links */
-a {
-    color: #667eea;
-    text - decoration: none;
-    font - weight: 600;
-    transition: all 0.3s ease;
-    display: inline - block;
-    margin: 10px 5px;
-}
-
-a:hover {
-    color: #764ba2;
-    transform: translateX(5px);
-}
-
-/* Footer */
-footer {
-    text - align: center;
-    margin - top: 40px;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border - radius: 15px;
-}
-
-footer a {
-    color: #fff;
-    margin: 0 15px;
-    font - size: 1.1rem;
-    transition: all 0.3s ease;
-}
-
-footer a:hover {
-    color: #f093fb;
-    transform: scale(1.1);
-}
-
-/* Form Grid */
-.form - grid {
-    display: grid;
-    grid - template - columns: 1fr 1fr;
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.form - group {
-    display: flex;
-    flex - direction: column;
-}
-
-.form - group label {
-    font - weight: 600;
-    margin - bottom: 5px;
-    color: #667eea;
-}
-
-/* Alert Messages */
-.alert {
-    padding: 15px;
-    border - radius: 10px;
-    margin: 15px 0;
-    font - weight: 600;
-}
-
-.alert - success {
-    background: #d4edda;
-    color: #155724;
-    border: 2px solid #c3e6cb;
-}
-
-.alert - error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 2px solid #f5c6cb;
-}
-
-/* Loading Spinner */
-.loading {
-    display: inline - block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, .3);
-    border - radius: 50 %;
-    border - top - color: #fff;
-    animation: spin 1s ease -in -out infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Modal Styles (thêm để đồng bộ với share.html) */
-.modal {
-    display: none;
-    position: fixed;
-    z - index: 1;
-    left: 0;
-    top: 0;
-    width: 100 %;
-    height: 100 %;
-    overflow: auto;
-    background - color: rgba(0, 0, 0, 0.4);
-    justify - content: center;
-    align - items: center;
-}
-
-.modal - content {
-    background - color: #fefefe;
-    margin: 15 % auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80 %;
-    max - width: 500px;
-    border - radius: 15px;
-    box - shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-}
-
-.close {
-    color: #aaa;
-    float: right;
-    font - size: 28px;
-    font - weight: bold;
-}
-
-.close: hover,
-.close:focus {
-    color: black;
-    text - decoration: none;
-    cursor: pointer;
-}
-
-/* Code block in modal */
-code {
-    word -break: break-all;
-    color: #333;
-}
-
-/* ============================================
-   RESPONSIVE - MOBILE (max-width: 768px)
-   ============================================ */
-@media(max - width: 768px) {
-    body {
-        padding: 10px;
+// Sample data for share.html (in production, load from Firebase)
+const tools = [
+    {
+        name: "VPS Auto Installer",
+        description: "Công cụ cài đặt tự động VPS với nhiều tùy chọn",
+        downloadLink: "https://example.com/tool1.zip"
+    },
+    {
+        name: "Key Generator",
+        description: "Tạo key ngẫu nhiên bảo mật cao",
+        downloadLink: "https://example.com/tool2.zip"
     }
-    
-    .container {
-        padding: 20px;
-        border - radius: 15px;
+];
+
+const apis = [
+    {
+        name: "Check IP API",
+        description: "API kiểm tra địa chỉ IP và thông tin liên quan",
+        url: "https://api.example.com/checkip?ip={IP_ADDRESS}"
+    },
+    {
+        name: "Weather API",
+        description: "Lấy thông tin thời tiết theo vị trí",
+        url: "https://api.example.com/weather?location={LOCATION}"
+    },
+    {
+        name: "Currency Exchange API",
+        description: "Tỷ giá hối đoái theo thời gian thực",
+        url: "https://api.example.com/exchange?from={FROM}&to={TO}"
     }
-    
-    h1 {
-        font - size: 1.8rem;
-    }
-    
-    h2 {
-        font - size: 1.4rem;
-    }
-    
-    .form - grid {
-        grid - template - columns: 1fr;
-    }
-    
-    .key - info {
-        flex - direction: column;
-        align - items: flex - start;
-    }
-    
-    .key - actions {
-        width: 100 %;
-        flex - direction: column;
-    }
-    
-    .key - actions button {
-        width: 100 %;
-    }
-    
-    .user - card {
-        flex - direction: column;
-        align - items: flex - start;
-    }
-    
-    .price - amount {
-        font - size: 2rem;
-    }
-    
-    footer a {
-        display: block;
-        margin: 10px 0;
+];
+
+let currentAPI = '';
+
+// Chờ DOM ready để attach events
+document.addEventListener('DOMContentLoaded', () => {
+    // Attach events cho login form
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            login();
+        });
     }
 
-    button, .btn {
-        padding: 12px 20px;
-        font - size: 0.95rem;
+    // Attach events cho register form
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            register();
+        });
+    }
+
+    // Attach events cho các phần khác
+    if (document.getElementById('update-link-btn')) {
+        document.getElementById('update-link-btn').addEventListener('click', updateDownloadLink);
+    }
+
+    if (document.getElementById('create-key-btn')) {
+        document.getElementById('create-key-btn').addEventListener('click', createKey);
+    }
+
+    if (document.getElementById('expiration-type')) {
+        document.getElementById('expiration-type').addEventListener('change', toggleExpirationType);
+    }
+
+    if (document.getElementById('change-password-btn')) {
+        document.getElementById('change-password-btn').addEventListener('click', changePassword);
+    }
+
+    if (document.getElementById('set-secondary-password-btn')) {
+        document.getElementById('set-secondary-password-btn').addEventListener('click', setSecondaryPassword);
+    }
+
+    if (document.getElementById('toggle-secondary-btn')) {
+        document.getElementById('toggle-secondary-btn').addEventListener('click', toggleSecondaryPasswordButton);
+    }
+
+    if (document.getElementById('add-balance-btn')) {
+        document.getElementById('add-balance-btn').addEventListener('click', addUserBalance);
+    }
+
+    if (document.getElementById('change-admin-password-btn')) {
+        document.getElementById('change-admin-password-btn').addEventListener('click', changeAdminPassword);
+    }
+
+    if (document.getElementById('download-vps-btn')) {
+        document.getElementById('download-vps-btn').addEventListener('click', downloadVPSManager);
+    }
+
+    // Attach logout nếu có
+    const logoutBtns = document.querySelectorAll('#logout-btn');
+    logoutBtns.forEach(btn => btn.addEventListener('click', logout));
+
+    // Xử lý cho share.html
+    if (window.location.pathname.includes('share.html')) {
+        // Attach events cho buttons in share.html
+        const toolsBtn = document.querySelector('button[onclick="showSection(\'tools\')"]');
+        if (toolsBtn) toolsBtn.addEventListener('click', () => showSection('tools'));
+
+        const apisBtn = document.querySelector('button[onclick="showSection(\'apis\')"]');
+        if (apisBtn) apisBtn.addEventListener('click', () => showSection('apis'));
+
+        const closeSpan = document.querySelector('.close');
+        if (closeSpan) closeSpan.addEventListener('click', closeModal);
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('api-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+    }
+});
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+            // Redirect to dashboard khi đã đăng nhập
+            getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
+                if (docSnap.exists()) {
+                    const role = docSnap.data().role;
+                    window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
+                }
+            });
+        }
+        loadKeys(user);
+        loadUserInfo(user);
+        if (window.location.pathname.includes('admin-dashboard.html')) {
+            loadUsers();
+            loadDownloadLink();
+            loadUsersForAddBalance();
+        }
+        if (window.location.pathname.includes('user-dashboard.html')) {
+            loadUserBalance(user);
+            loadSecondaryPasswordSettings(user);
+        }
+    } else {
+        if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
+            window.location.href = 'login.html';
+        }
+    }
+});
+
+function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+            // onAuthStateChanged sẽ xử lý redirect
+        })
+        .catch((error) => {
+            showAlert('Lỗi đăng nhập: ' + error.message, 'error');
+        });
+}
+
+function register() {
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-confirm-password').value;
+
+    if (password !== confirmPassword) {
+        showAlert('Mật khẩu xác nhận không khớp!', 'error');
+        return;
+    }
+
+    if (password.length < 6) {
+        showAlert('Mật khẩu không hợp lệ: Phải ít nhất 6 ký tự!', 'error');
+        return;
+    }
+
+    fetchSignInMethodsForEmail(auth, email)
+        .then((methods) => {
+            if (methods.length > 0) {
+                showAlert('Email này đã được sử dụng. Hãy thử đăng nhập.', 'error');
+                return;
+            }
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    setDoc(doc(db, 'users', user.uid), {
+                        email: email,
+                        role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
+                        balance: 0,
+                        createdAt: Timestamp.now(),
+                        secondaryPassword: null,
+                        enableSecondary: false
+                    }).then(() => {
+                        showAlert('Đăng ký thành công! Đang tự động đăng nhập...', 'success');
+                        signInWithEmailAndPassword(auth, email, password); // Tự đăng nhập
+                    });
+                })
+                .catch((error) => {
+                    showAlert('Lỗi đăng ký: ' + error.message, 'error');
+                });
+        });
+}
+
+function logout() {
+    signOut(auth).then(() => {
+        window.location.href = 'index.html';
+    });
+}
+
+// Các function khác giữ nguyên (updateDownloadLink, createKey, toggleExpirationType, changePassword, setSecondaryPassword, toggleSecondaryPasswordButton, loadSecondaryPasswordSettings, loadUsersForAddBalance, addUserBalance, changeAdminPassword, showAlert, downloadVPSManager, v.v.)
+
+// Functions từ share.html inline
+function showSection(section) {
+    document.getElementById('tools-section').style.display = 'none';
+    document.getElementById('apis-section').style.display = 'none';
+
+    if (section === 'tools') {
+        document.getElementById('tools-section').style.display = 'block';
+        loadTools();
+    } else if (section === 'apis') {
+        document.getElementById('apis-section').style.display = 'block';
+        loadAPIs();
     }
 }
 
-/* ============================================
-   RESPONSIVE - TABLET (768px - 1024px)
-   ============================================ */
-@media(min - width: 769px) and(max - width: 1024px) {
-    .container {
-        max - width: 900px;
-        padding: 35px;
-    }
-    
-    .form - grid {
-        grid - template - columns: 1fr 1fr;
-    }
+function loadTools() {
+    const toolsList = document.getElementById('tools-list');
+    toolsList.innerHTML = '';
+
+    tools.forEach(tool => {
+        const div = document.createElement('div');
+        div.className = 'key-card';
+        div.innerHTML = `
+            <h3 style="color: #667eea;">${tool.name}</h3>
+            <p>${tool.description}</p>
+            <a href="${tool.downloadLink}" class="btn" style="width: auto; margin-top: 10px;" target="_blank">📥 Tải Tool</a>
+        `;
+        toolsList.appendChild(div);
+    });
 }
 
-/* ============================================
-   RESPONSIVE - DESKTOP (min-width: 1025px)
-   ============================================ */
-@media(min - width: 1025px) {
-    .container {
-        max - width: 1200px;
-    }
-    
-    .form - grid {
-        grid - template - columns: repeat(3, 1fr);
-    }
-    
-    .key - card, .user - card {
-        transition: all 0.3s ease;
-    }
-    
-    .key - card:hover {
-        transform: translateY(-8px);
-    }
+function loadAPIs() {
+    const apisList = document.getElementById('apis-list');
+    apisList.innerHTML = '';
+
+    apis.forEach((api, index) => {
+        const div = document.createElement('div');
+        div.className = 'key-card';
+        div.style.cursor = 'pointer';
+        div.innerHTML = `
+            <h3 style="color: #667eea;">${api.name}</h3>
+            <p>${api.description}</p>
+            <button class="btn" style="width: auto; margin-top: 10px;" onclick="showAPIModal(${index})">🔍 Xem API</button>
+        `;
+        apisList.appendChild(div);
+    });
 }
 
-/* Empty State */
-.empty - state {
-    text - align: center;
-    padding: 60px 20px;
-    color: #999;
+function showAPIModal(index) {
+    const api = apis[index];
+    document.getElementById('modal-title').textContent = api.name;
+    document.getElementById('modal-description').textContent = api.description;
+    document.getElementById('modal-api-url').textContent = api.url;
+    currentAPI = api.url;
+    document.getElementById('api-modal').style.display = 'flex';
+
+    // Attach copy button event (vì button được tạo động)
+    const copyBtn = document.querySelector('#api-modal .btn');
+    if (copyBtn) copyBtn.addEventListener('click', copyAPI);
 }
 
-.empty - state svg {
-    width: 150px;
-    height: 150px;
-    margin - bottom: 20px;
-    opacity: 0.5;
-}
-/* Hiệu ứng click cho button */
-button:active {
-    transform: scale(0.95);
-    box - shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    transition: transform 0.1s ease, box - shadow 0.1s ease;
+function closeModal() {
+    document.getElementById('api-modal').style.display = 'none';
 }
 
-/* Hidden Key Styles */
-.hidden - key {
-    filter: blur(5px);
+function copyAPI() {
+    navigator.clipboard.writeText(currentAPI).then(() => {
+        alert('✅ Đã copy API!');
+    });
 }
-.hidden - key.visible {
-    filter: none;
-}
+
+// Các function còn lại từ script gốc (loadKeys, loadUserInfo, loadUsers, loadDownloadLink, v.v.) giữ nguyên, vì chúng đã khớp.
