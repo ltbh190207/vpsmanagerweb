@@ -238,7 +238,93 @@ document.getElementById("add-balance-btn")?.addEventListener("click", async () =
     alert("Cộng tiền thành công!");
     loadAdminDashboard();
 });
+// ==================== USER DASHBOARD – HIỂN THỊ KEY + NÚT XÓA ====================
+async function loadUserDashboard() {
+    const snap = await getDoc(doc(db, "users", currentUser.uid));
+    const data = snap.data();
+    document.getElementById("user-email").textContent = currentUser.email;
+    document.getElementById("user-balance").textContent = (data.balance || 0).toLocaleString() + " VNĐ";
 
+    const q = query(collection(db, "keys"), where("usedBy", "==", currentUser.uid));
+    const keys = await getDocs(q);
+    const list = document.getElementById("key-list");
+    list.innerHTML = keys.empty ? "<p>Chưa có key nào</p>" : "";
+
+    keys.forEach(d => {
+        const k = d.data();
+        const exp = k.expiresAt ? new Date(k.expiresAt.seconds*1000).toLocaleString("vi-VN") : "Vĩnh viễn";
+        list.innerHTML += `
+            <div class="key-card">
+                <div class="key-info">
+                    <div>
+                        <div class="key-code">${d.id}</div>
+                        <div class="key-meta">Hết hạn: ${exp}</div>
+                    </div>
+                    <div class="key-actions">
+                        <button class="btn-danger" onclick="deleteMyKey('${d.id}')">
+                            Xóa Key
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    });
+}
+
+// Hàm xóa key của user
+window.deleteMyKey = async (keyId) => {
+    if (!confirm("Bạn chắc chắn muốn xóa key này?\nHành động không thể hoàn tác!")) return;
+
+    try {
+        await deleteDoc(doc(db, "keys", keyId));
+        alert("Đã xóa key thành công!");
+        loadUserDashboard();
+    } catch (err) {
+        alert("Lỗi: " + err.message);
+    }
+};
+
+// ==================== ADMIN DASHBOARD – CŨNG CÓ NÚT XÓA (đã có sẵn) ====================
+async function loadAdminDashboard() {
+    if (!isAdmin) return location.href = "user-dashboard.html";
+
+    const keysSnap = await getDocs(collection(db, "keys"));
+    const keyList = document.getElementById("key-list");
+    keyList.innerHTML = "";
+
+    keysSnap.forEach(d => {
+        const k = d.data();
+        const exp = k.expiresAt ? new Date(k.expiresAt.seconds*1000).toLocaleString("vi-VN") : "Vĩnh viễn";
+        const usedBy = k.usedBy ? (await getDoc(doc(db, "users", k.usedBy))).data()?.email || k.usedBy : "Chưa dùng";
+
+        keyList.innerHTML += `
+            <div class="key-card">
+                <div class="key-info">
+                    <div>
+                        <div class="key-code">${d.id}</div>
+                        <div class="key-meta">
+                            Hết hạn: ${exp}<br>
+                            Dùng bởi: ${usedBy}
+                        </div>
+                    </div>
+                    <div class="key-actions">
+                        <button class="btn-danger" onclick="deleteKey('${d.id}')">
+                            Xóa Key
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    // ... phần load user, gắn key, cộng tiền như cũ
+}
+
+// Hàm xóa key của admin (đã có sẵn)
+window.deleteKey = async (keyId) => {
+    if (!confirm("Xóa key này vĩnh viễn?")) return;
+    await deleteDoc(doc(db, "keys", keyId));
+    alert("Đã xóa key!");
+    loadAdminDashboard();
+};
 // Xóa key
 window.deleteKey = async (key) => {
     if (confirm("Xóa key này?")) {
