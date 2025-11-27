@@ -11,8 +11,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 // THAY CONFIG NÀY BẰNG CỦA BẠN (bắt buộc!)
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-      apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
+  apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
   authDomain: "vpsmanagerweb.firebaseapp.com",
   projectId: "vpsmanagerweb",
   storageBucket: "vpsmanagerweb.firebasestorage.app",
