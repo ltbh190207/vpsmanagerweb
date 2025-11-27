@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập - VPS Manager</title>
+    <title>Đăng ký - VPS Manager</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container" style="max-width: 500px;">
-        <h1>🔐 Đăng nhập</h1>
-        <p>Chào mừng đến với VPS Key Manager</p>
+        <h1>✨ Đăng ký</h1>
+        <p>Tạo tài khoản mới</p>
 
-        <form id="login-form">
-            <input type="email" id="login-email" placeholder="📧 Email của bạn" required>
-            <input type="password" id="login-password" placeholder="🔒 Mật khẩu" required>
-            <button type="submit">🚀 Đăng nhập</button>
+        <form id="register-form">
+            <input type="email" id="register-email" placeholder="📧 Email của bạn" required>
+            <input type="password" id="register-password" placeholder="🔒 Mật khẩu (tối thiểu 6 ký tự)" required minlength="6">
+            <input type="password" id="register-confirm-password" placeholder="🔒 Xác nhận mật khẩu" required>
+            <button type="submit">✨ Đăng ký</button>
         </form>
 
         <div style="text-align: center; margin-top: 20px;">
-            <a href="register.html">Chưa có tài khoản? Đăng ký ngay</a><br>
+            <a href="login.html">Đã có tài khoản? Đăng nhập</a><br>
             <a href="index.html">← Quay về Trang chủ</a>
         </div>
     </div>

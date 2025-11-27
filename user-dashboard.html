@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,43 +10,47 @@
     <div class="container">
         <h1>👤 User Dashboard</h1>
         <p>Quản lý Keys của bạn</p>
-        
+
         <h2>ℹ️ Thông tin User</h2>
         <div id="user-info">
             <p>Email: <span id="user-email"></span></p>
             <p>Số dư: <span id="user-balance">0</span> VNĐ</p>
         </div>
-        
+
+        <h2>🎫 Sử dụng Key</h2>
+        <input type="text" id="use-key-input" placeholder="Nhập key để kích hoạt">
+        <button id="use-key-btn">✅ Kích hoạt Key</button>
+
         <h2>🔒 Đổi Mật Khẩu</h2>
         <input type="password" id="old-password" placeholder="Mật khẩu cũ">
         <input type="password" id="new-password" placeholder="Mật khẩu mới">
         <button id="change-password-btn">🔄 Đổi Mật Khẩu</button>
-        
+
         <h2>🔑 Mật Khẩu Cấp 2</h2>
         <input type="password" id="secondary-password" placeholder="Mật khẩu cấp 2">
         <button id="set-secondary-password-btn">⚙️ Thiết Lập Mật Khẩu C2</button>
         <button id="toggle-secondary-btn">Bật/Tắt Mật Khẩu C2</button>
-        
+
         <h2>📋 Keys của tôi</h2>
         <div id="key-list"></div>
-        
+
         <h2>📥 Tải VPS Manager</h2>
         <input type="text" id="download-key" placeholder="Nhập key để tải">
         <button id="download-vps-btn">📥 Tải Tool</button>
-        
+
         <div style="margin-top: 30px;">
             <button id="logout-btn" class="btn-secondary">🚪 Đăng xuất</button>
             <a href="admin.html" class="btn">ℹ️ Thông tin Admin</a>
         </div>
     </div>
-    
+
     <footer>
         <a href="https://facebook.com" target="_blank">📘 Facebook</a>
         <a href="https://youtube.com" target="_blank">▶️ YouTube</a>
         <a href="https://t.me" target="_blank">✈️ Telegram</a>
         <a href="mailto:admin@gmail.com">📧 Gmail</a>
     </footer>
-    
+
     <script type="module" src="script.js"></script>
 </body>
 </html>

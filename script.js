@@ -1,559 +1,482 @@
-
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, fetchSignInMethodsForEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
-    authDomain: "vpsmanagerweb.firebaseapp.com",
-    projectId: "vpsmanagerweb",
-    storageBucket: "vpsmanagerweb.firebasestorage.app",
-    messagingSenderId: "851393978130",
-    appId: "1:851393978130:web:24fddef37a51f577565dcb",
-    measurementId: "G-7H51LQGZV0"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const ADMIN_EMAIL = 'admin@vpsmanager.com';
-
-// Chờ DOM ready để attach events
-document.addEventListener('DOMContentLoaded', () => {
-    // Attach events cho các trang cụ thể
-    if (document.getElementById('login-btn')) {
-        document.getElementById('login-btn').addEventListener('click', login);
-        document.getElementById('register-btn').addEventListener('click', register);
-    }
-
-    if (document.getElementById('update-link-btn')) {
-        document.getElementById('update-link-btn').addEventListener('click', updateDownloadLink);
-    }
-
-    if (document.getElementById('create-key-btn')) {
-        document.getElementById('create-key-btn').addEventListener('click', createKey);
-    }
-
-    if (document.getElementById('expiration-type')) {
-        document.getElementById('expiration-type').addEventListener('change', toggleExpirationType);
-    }
-
-    if (document.getElementById('change-password-btn')) {
-        document.getElementById('change-password-btn').addEventListener('click', changePassword);
-    }
-
-    if (document.getElementById('set-secondary-password-btn')) {
-        document.getElementById('set-secondary-password-btn').addEventListener('click', setSecondaryPassword);
-    }
-
-    if (document.getElementById('toggle-secondary-btn')) {
-        document.getElementById('toggle-secondary-btn').addEventListener('click', toggleSecondaryPasswordButton);
-    }
-
-    if (document.getElementById('add-balance-btn')) {
-        document.getElementById('add-balance-btn').addEventListener('click', addUserBalance);
-    }
-
-    if (document.getElementById('change-admin-password-btn')) {
-        document.getElementById('change-admin-password-btn').addEventListener('click', changeAdminPassword);
-    }
-
-    if (document.getElementById('download-vps-btn')) {
-        document.getElementById('download-vps-btn').addEventListener('click', downloadVPSManager);
-    }
-
-    // Attach logout nếu có
-    const logoutBtns = document.querySelectorAll('#logout-btn');
-    logoutBtns.forEach(btn => btn.addEventListener('click', logout));
-});
-
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    if (window.location.pathname.includes('login.html') || window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-      // Redirect to dashboard khi đã đăng nhập
-      getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
-        if (docSnap.exists()) {
-          const role = docSnap.data().role;
-          window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'user-dashboard.html';
-        }
-      });
-    }
-    loadKeys(user);
-    loadUserInfo(user);
-    if (window.location.pathname.includes('admin-dashboard.html')) {
-      loadUsers();
-      loadDownloadLink();
-      loadUsersForAddBalance();
-    }
-    if (window.location.pathname.includes('user-dashboard.html')) {
-      loadUserBalance(user);
-      loadSecondaryPasswordSettings(user);
-    }
-  } else {
-    if (window.location.pathname.includes('user-dashboard.html') || window.location.pathname.includes('admin-dashboard.html')) {
-      window.location.href = 'login.html';
-    }
-  }
-});
-
-function register() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  if (password.length < 6) {
-    showAlert('Mật khẩu không hợp lệ: Phải ít nhất 6 ký tự!', 'error');
-    return;
-  }
-  fetchSignInMethodsForEmail(auth, email)
-    .then((methods) => {
-      if (methods.length > 0) {
-        showAlert('Email này đã được sử dụng. Hãy thử đăng nhập.', 'error');
-        return;
-      }
-      createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          const user = userCredential.user;
-          setDoc(doc(db, 'users', user.uid), {
-            email: email,
-            role: (email === ADMIN_EMAIL) ? 'admin' : 'user',
-            balance: 0,
-            createdAt: Timestamp.now(),
-            secondaryPassword: null,
-            enableSecondary: false
-          }).then(() => {
-            showAlert('Đăng ký thành công! Đang tự động đăng nhập...', 'success');
-            signInWithEmailAndPassword(auth, email, password); // Tự đăng nhập, onAuthStateChanged sẽ redirect
-          });
-        })
-        .catch((error) => {
-          let message = 'Lỗi đăng ký không xác định: ' + error.message;
-          switch (error.code) {
-            case 'auth/invalid-email':
-              message = 'Email không hợp lệ.';
-              break;
-            case 'auth/weak-password':
-              message = 'Mật khẩu không hợp lệ: Phải ít nhất 6 ký tự.';
-              break;
-            case 'auth/email-already-in-use':
-              message = 'Email này đã được sử dụng. Hãy thử đăng nhập hoặc sử dụng email khác.';
-              break;
-            default:
-              // Giữ nguyên message default
-          }
-          showAlert(message, 'error');
-        });
-    })
-    .catch((error) => {
-      let message = 'Lỗi kiểm tra email không xác định: ' + error.message;
-      switch (error.code) {
-        case 'auth/invalid-email':
-          message = 'Email không hợp lệ.';
-          break;
-        default:
-          // Giữ nguyên message default
-      }
-      showAlert(message, 'error');
-    });
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box- sizing: border - box;
 }
 
-function login() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  signInWithEmailAndPassword(auth, email, password)
-    .then(() => showAlert('Đăng nhập thành công!', 'success'))
-    .catch((error) => {
-      let message = 'Lỗi đăng nhập không xác định: ' + error.message;
-      switch (error.code) {
-        case 'auth/invalid-email':
-          message = 'Email không hợp lệ.';
-          break;
-        case 'auth/invalid-credential':
-          message = 'Email hoặc mật khẩu không đúng.';
-          break;
-        case 'auth/user-not-found':
-          message = 'Không tìm thấy tài khoản với email này.';
-          break;
-        case 'auth/wrong-password':
-          message = 'Mật khẩu không hợp lệ.';
-          break;
-        default:
-          // Giữ nguyên message default
-      }
-      showAlert(message, 'error');
-    });
+body {
+    font - family: 'Segoe UI', Tahoma, Geneva, Verdana, sans - serif;
+    background: linear - gradient(135deg, #667eea 0 %, #764ba2 100 %);
+    min - height: 100vh;
+    color: #fff;
+    padding: 20px;
 }
 
-function logout() {
-  signOut(auth).then(() => {
-    window.location.href = 'login.html';
-  });
+/* Container Styles */
+.container {
+    max - width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border - radius: 20px;
+    padding: 40px;
+    box - shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    color: #333;
+    animation: fadeIn 0.5s ease;
 }
 
-// ADMIN: Tạo key với nhiều tùy chọn (giữ nguyên)
-function createKey() {
-  const user = auth.currentUser;
-  if (!user) return;
-  
-  const newKey = crypto.randomUUID();
-  const expirationType = document.getElementById('expiration-type').value;
-  let expiration = null;
-  
-  if (expirationType === 'date') {
-    const dateInput = document.getElementById('expiration-date').value;
-    if (!dateInput) {
-      showAlert('Vui lòng chọn ngày hết hạn!', 'error');
-      return;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header Styles */
+h1 {
+    color: #667eea;
+    font - size: 2.5rem;
+    margin - bottom: 10px;
+    text - align: center;
+    text - shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #764ba2;
+    font - size: 1.8rem;
+    margin: 30px 0 15px;
+    border - bottom: 3px solid #667eea;
+    padding - bottom: 10px;
+}
+
+p {
+    text - align: center;
+    font - size: 1.1rem;
+    margin - bottom: 20px;
+    color: #666;
+}
+
+/* Input & Select Styles */
+input, select, textarea {
+    width: 100 %;
+    padding: 15px;
+    margin: 10px 0;
+    border: 2px solid #e0e0e0;
+    border - radius: 10px;
+    font - size: 1rem;
+    transition: all 0.3s ease;
+    background: #fff;
+    color: #333;
+}
+
+input: focus, select: focus, textarea:focus {
+    outline: none;
+    border - color: #667eea;
+    box - shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Button Styles */
+button, .btn {
+    padding: 15px 30px;
+    background: linear - gradient(135deg, #667eea 0 %, #764ba2 100 %);
+    color: #fff;
+    border: none;
+    border - radius: 10px;
+    font - size: 1rem;
+    font - weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box - shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    width: 100 %;
+    margin: 10px 0;
+    text - decoration: none;
+    display: inline - block;
+    text - align: center;
+}
+
+button: hover, .btn:hover {
+    transform: translateY(-2px);
+    box - shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.btn - secondary {
+    background: linear - gradient(135deg, #f093fb 0 %, #f5576c 100 %);
+}
+
+.btn - danger {
+    background: linear - gradient(135deg, #ff6b6b 0 %, #ee5a6f 100 %);
+    padding: 8px 15px;
+    width: auto;
+    margin: 0 5px;
+    font - size: 0.9rem;
+}
+
+.btn - success {
+    background: linear - gradient(135deg, #56ab2f 0 %, #a8e063 100 %);
+    padding: 8px 15px;
+    width: auto;
+    margin: 0 5px;
+    font - size: 0.9rem;
+}
+
+/* Key Card Styles */
+.key - card {
+    background: linear - gradient(135deg, #f5f7fa 0 %, #c3cfe2 100 %);
+    border - radius: 15px;
+    padding: 20px;
+    margin: 15px 0;
+    box - shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.key - card:hover {
+    transform: translateY(-5px);
+    box - shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.key - info {
+    display: flex;
+    justify - content: space - between;
+    align - items: center;
+    flex - wrap: wrap;
+    gap: 10px;
+}
+
+.key - code {
+    font - family: 'Courier New', monospace;
+    font - size: 1.1rem;
+    font - weight: bold;
+    color: #667eea;
+    word -break: break-all;
+}
+
+.key - meta {
+    font - size: 0.9rem;
+    color: #666;
+    margin - top: 10px;
+}
+
+.key - actions {
+    display: flex;
+    gap: 10px;
+    margin - top: 10px;
+}
+
+/* User Card Styles */
+.user - card {
+    background: linear - gradient(135deg, #ffecd2 0 %, #fcb69f 100 %);
+    border - radius: 15px;
+    padding: 20px;
+    margin: 15px 0;
+    display: flex;
+    justify - content: space - between;
+    align - items: center;
+    box - shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    flex - wrap: wrap;
+}
+
+.user - info {
+    flex: 1;
+}
+
+.user - email {
+    font - weight: bold;
+    font - size: 1.1rem;
+    color: #333;
+}
+
+.user - role {
+    display: inline - block;
+    padding: 5px 15px;
+    background: #667eea;
+    color: #fff;
+    border - radius: 20px;
+    font - size: 0.9rem;
+    margin - top: 5px;
+}
+
+/* Price Card */
+.price - card {
+    background: linear - gradient(135deg, #f093fb 0 %, #f5576c 100 %);
+    color: #fff;
+    border - radius: 20px;
+    padding: 30px;
+    text - align: center;
+    margin: 20px 0;
+    box - shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
+}
+
+.price - amount {
+    font - size: 3rem;
+    font - weight: bold;
+    margin: 20px 0;
+}
+
+.price - card p {
+    color: #fff;
+    font - size: 1.2rem;
+}
+
+.price - card h2 {
+    border - bottom: none;
+}
+
+/* Links */
+a {
+    color: #667eea;
+    text - decoration: none;
+    font - weight: 600;
+    transition: all 0.3s ease;
+    display: inline - block;
+    margin: 10px 5px;
+}
+
+a:hover {
+    color: #764ba2;
+    transform: translateX(5px);
+}
+
+/* Footer */
+footer {
+    text - align: center;
+    margin - top: 40px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border - radius: 15px;
+}
+
+footer a {
+    color: #fff;
+    margin: 0 15px;
+    font - size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+footer a:hover {
+    color: #f093fb;
+    transform: scale(1.1);
+}
+
+/* Form Grid */
+.form - grid {
+    display: grid;
+    grid - template - columns: 1fr 1fr;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.form - group {
+    display: flex;
+    flex - direction: column;
+}
+
+.form - group label {
+    font - weight: 600;
+    margin - bottom: 5px;
+    color: #667eea;
+}
+
+/* Alert Messages */
+.alert {
+    padding: 15px;
+    border - radius: 10px;
+    margin: 15px 0;
+    font - weight: 600;
+}
+
+.alert - success {
+    background: #d4edda;
+    color: #155724;
+    border: 2px solid #c3e6cb;
+}
+
+.alert - error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 2px solid #f5c6cb;
+}
+
+/* Loading Spinner */
+.loading {
+    display: inline - block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, .3);
+    border - radius: 50 %;
+    border - top - color: #fff;
+    animation: spin 1s ease -in -out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal Styles (thêm để đồng bộ với share.html) */
+.modal {
+    display: none;
+    position: fixed;
+    z - index: 1;
+    left: 0;
+    top: 0;
+    width: 100 %;
+    height: 100 %;
+    overflow: auto;
+    background - color: rgba(0, 0, 0, 0.4);
+    justify - content: center;
+    align - items: center;
+}
+
+.modal - content {
+    background - color: #fefefe;
+    margin: 15 % auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80 %;
+    max - width: 500px;
+    border - radius: 15px;
+    box - shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font - size: 28px;
+    font - weight: bold;
+}
+
+.close: hover,
+.close:focus {
+    color: black;
+    text - decoration: none;
+    cursor: pointer;
+}
+
+/* Code block in modal */
+code {
+    word -break: break-all;
+    color: #333;
+}
+
+/* ============================================
+   RESPONSIVE - MOBILE (max-width: 768px)
+   ============================================ */
+@media(max - width: 768px) {
+    body {
+        padding: 10px;
     }
-    expiration = Timestamp.fromDate(new Date(dateInput));
-  } else if (expirationType === 'duration') {
-    const value = parseInt(document.getElementById('duration-value').value);
-    const unit = document.getElementById('duration-unit').value;
-    if (!value) {
-      showAlert('Vui lòng nhập số lượng!', 'error');
-      return;
-    }
-    const now = new Date();
-    if (unit === 'hours') now.setHours(now.getHours() + value);
-    else if (unit === 'days') now.setDate(now.getDate() + value);
-    else if (unit === 'months') now.setMonth(now.getMonth() + value);
-    else if (unit === 'years') now.setFullYear(now.getFullYear() + value);
-    expiration = Timestamp.fromDate(now);
-  }
-
-  addDoc(collection(db, 'keys'), {
-    key: newKey,
-    bound_device: null,
-    bound_user: null,
-    expiration: expiration,
-    createdAt: Timestamp.now(),
-    createdBy: user.email
-  }).then(() => {
-    showAlert('Tạo key thành công!', 'success');
-    loadKeys(user);
-  });
-}
-
-function resetKey(keyId) {
-  updateDoc(doc(db, 'keys', keyId), {
-    bound_device: null,
-    bound_user: null
-  }).then(() => {
-    showAlert('Reset key thành công!', 'success');
-    loadKeys(auth.currentUser);
-  });
-}
-
-async function loadKeys(user) {
-  const keyList = document.getElementById('key-list');
-  if (!keyList) return;
-  keyList.innerHTML = '';
-  
-  const userDocSnap = await getDoc(doc(db, 'users', user.uid));
-  const isAdmin = userDocSnap.data().role === 'admin';
-  const enableSecondary = userDocSnap.data().enableSecondary || false;
-  const secondaryPassword = userDocSnap.data().secondaryPassword;
-  
-  let keysQuery;
-  if (isAdmin) {
-    keysQuery = collection(db, 'keys');
-  } else {
-    keysQuery = query(collection(db, 'keys'), where('bound_user', '==', user.uid));
-  }
-  
-  const snapshot = await getDocs(keysQuery);
-  for (const docSnap of snapshot.docs) {
-    const data = docSnap.data();
     
-    const div = document.createElement('div');
-    div.className = 'key-card';
-    
-    let expText = 'Vĩnh viễn';
-    let expStatus = '';
-    if (data.expiration) {
-      const expDate = data.expiration.toDate();
-      expText = expDate.toLocaleString('vi-VN');
-      expStatus = expDate > new Date() ? '✅ Còn hạn' : '❌ Hết hạn';
+    .container {
+        padding: 20px;
+        border - radius: 15px;
     }
     
-    const keyDisplay = enableSecondary ? '********' : data.key;
-    const keyClass = enableSecondary ? 'hidden-key' : '';
+    h1 {
+        font - size: 1.8rem;
+    }
     
-    div.innerHTML = `
-      <div class="key-info">
-        <div>
-          <div class="key-code ${keyClass}" data-key="${data.key}">${keyDisplay}</div>
-          <div class="key-meta">
-            📅 Hết hạn: ${expText} ${expStatus}<br>
-            💻 Thiết bị: ${data.bound_device || 'Chưa kích hoạt'}<br>
-            ${isAdmin ? `👤 User: ${data.bound_user || 'Chưa gán'}<br>📧 Tạo bởi: ${data.createdBy || 'Unknown'}<br>⏰ Thời gian tạo: ${data.createdAt.toDate().toLocaleString('vi-VN')}` : ''}
-          </div>
-        </div>
-        <div class="key-actions">
-          <button class="btn-success show-key-btn" data-key-id="${docSnap.id}">👁️ Hiện Key</button>
-          <button class="btn-success copy-key-btn" data-key="${data.key}">📋 Copy</button>
-          <button class="btn-success" data-key-id="${docSnap.id}">Reset</button>
-          <button class="btn-danger" data-key-id="${docSnap.id}">Xóa</button>
-        </div>
-      </div>
-    `;
-    keyList.appendChild(div);
-  }
-
-  // Attach events cho buttons động
-  keyList.querySelectorAll('.show-key-btn').forEach(btn => {
-    btn.addEventListener('click', () => showKey(btn.dataset.keyId, enableSecondary, secondaryPassword));
-  });
-  keyList.querySelectorAll('.copy-key-btn').forEach(btn => {
-    btn.addEventListener('click', () => copyKey(btn.dataset.key));
-  });
-  keyList.querySelectorAll('.btn-success:not(.show-key-btn):not(.copy-key-btn)').forEach(btn => {
-    btn.addEventListener('click', () => resetKey(btn.dataset.keyId));
-  });
-  keyList.querySelectorAll('.btn-danger').forEach(btn => {
-    btn.addEventListener('click', () => deleteKey(btn.dataset.keyId));
-  });
-}
-
-function copyKey(key) {
-  navigator.clipboard.writeText(key).then(() => {
-    showAlert('Copy key thành công!', 'success');
-  });
-}
-
-function showKey(keyId, enableSecondary, secondaryPassword) {
-  if (enableSecondary) {
-    const input = prompt('Nhập mật khẩu cấp 2 để hiện key:');
-    if (input !== secondaryPassword) {
-      showAlert('Mật khẩu cấp 2 sai!', 'error');
-      return;
+    h2 {
+        font - size: 1.4rem;
     }
-  }
-  const keyElement = document.querySelector(`[data-key-id="${keyId}"]`).parentElement.previousSibling.querySelector('.key-code');
-  keyElement.classList.add('visible');
-  keyElement.textContent = keyElement.dataset.key;
-}
-
-function deleteKey(keyId) {
-  if (!confirm('Bạn có chắc muốn xóa key này?')) return;
-  deleteDoc(doc(db, `keys`, keyId)).then(() => {
-    showAlert('Xóa key thành công!', 'success');
-    loadKeys(auth.currentUser);
-  });
-}
-
-async function loadUsers() {
-  const userList = document.getElementById('user-list');
-  if (!userList) return;
-  userList.innerHTML = '';
-  
-  const snapshot = await getDocs(collection(db, 'users'));
-  for (const docSnap of snapshot.docs) {
-    const data = docSnap.data();
-    const div = document.createElement('div');
-    div.className = 'user-card';
     
-    div.innerHTML = `
-      <div class="user-info">
-        <div class="user-email">${data.email}</div>
-        <span class="user-role">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
-        <div class="key-meta">💰 Số dư: ${(data.balance || 0).toLocaleString('vi-VN')} VNĐ<br>⏰ Tạo lúc: ${data.createdAt.toDate().toLocaleString('vi-VN')}</div>
-      </div>
-      <button class="btn-danger" data-user-id="${docSnap.id}" data-email="${data.email}">Xóa</button>
-    `;
-    userList.appendChild(div);
-  }
-
-  // Attach events cho buttons động
-  userList.querySelectorAll('.btn-danger').forEach(btn => {
-    btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.email));
-  });
-}
-
-function deleteUser(userId, email) {
-  if (!confirm(`Xóa user ${email}?`)) return;
-  deleteDoc(doc(db, 'users', userId)).then(() => {
-    showAlert('Xóa user thành công!', 'success');
-    loadUsers();
-  });
-}
-
-function updateDownloadLink() {
-  const link = document.getElementById('download-link').value;
-  if (!link) return showAlert('Nhập link!', 'error');
-  setDoc(doc(db, 'settings', 'general'), { download_link: link }, { merge: true })
-    .then(() => showAlert('Cập nhật link thành công!', 'success'));
-}
-
-function loadDownloadLink() {
-  getDoc(doc(db, 'settings', 'general')).then((docSnap) => {
-    if (docSnap.exists()) {
-      document.getElementById('download-link').value = docSnap.data().download_link || '';
+    .form - grid {
+        grid - template - columns: 1fr;
     }
-  });
-}
-
-function loadUserBalance(user) {
-  getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
-    if (docSnap.exists()) {
-      const balance = docSnap.data().balance || 0;
-      const balanceEl = document.getElementById('user-balance');
-      if (balanceEl) {
-        balanceEl.textContent = balance.toLocaleString('vi-VN');
-      }
-    }
-  });
-}
-
-function loadUserInfo(user) {
-  const emailEl = document.getElementById('user-email');
-  if (emailEl) {
-    emailEl.textContent = user.email;
-  }
-  loadUserBalance(user);
-}
-
-function changePassword() {
-  const user = auth.currentUser;
-  const oldPassword = document.getElementById('old-password').value;
-  const newPassword = document.getElementById('new-password').value;
-
-  // Re-authenticate with old password
-  signInWithEmailAndPassword(auth, user.email, oldPassword)
-    .then(() => {
-      updatePassword(user, newPassword)
-        .then(() => showAlert('Đổi mật khẩu thành công!', 'success'))
-        .catch((error) => showAlert('Lỗi đổi mật khẩu: ' + error.message, 'error'));
-    })
-    .catch(() => showAlert('Mật khẩu cũ sai!', 'error'));
-}
-
-function setSecondaryPassword() {
-  const user = auth.currentUser;
-  const secondary = document.getElementById('secondary-password').value;
-  if (!secondary) return showAlert('Nhập mật khẩu cấp 2!', 'error');
-
-  updateDoc(doc(db, 'users', user.uid), { secondaryPassword: secondary })
-    .then(() => showAlert('Thiết lập mật khẩu cấp 2 thành công!', 'success'));
-}
-
-async function toggleSecondaryPasswordButton() {
-  const user = auth.currentUser;
-  const button = document.getElementById('toggle-secondary-btn');
-  const currentEnabled = button.textContent === 'Tắt Mật Khẩu C2';
-  const enabled = !currentEnabled;
-
-  if (enabled) {
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.data().secondaryPassword) {
-      showAlert('Vui lòng thiết lập mật khẩu cấp 2 trước khi bật!', 'error');
-      return;
-    }
-  }
-
-  updateDoc(doc(db, 'users', user.uid), { enableSecondary: enabled })
-    .then(() => {
-      showAlert(`Mật khẩu cấp 2 đã ${enabled ? 'bật' : 'tắt'}!`, 'success');
-      button.textContent = enabled ? 'Tắt Mật Khẩu C2' : 'Bật Mật Khẩu C2';
-      document.getElementById('purchase-secondary-password').style.display = enabled ? 'block' : 'none';
-      loadKeys(user); // Reload to apply hiding
-    });
-}
-
-function loadSecondaryPasswordSettings(user) {
-  getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
-    if (docSnap.exists()) {
-      const enabled = docSnap.data().enableSecondary || false;
-      const button = document.getElementById('toggle-secondary-btn');
-      if (button) {
-        button.textContent = enabled ? 'Tắt Mật Khẩu C2' : 'Bật Mật Khẩu C2';
-      }
-      document.getElementById('purchase-secondary-password').style.display = enabled ? 'block' : 'none';
-    }
-  });
-}
-
-async function loadUsersForAddBalance() {
-  const select = document.getElementById('add-balance-user');
-  if (!select) return;
-
-  const snapshot = await getDocs(collection(db, 'users'));
-  for (const docSnap of snapshot.docs) {
-    const data = docSnap.data();
-    if (data.role !== 'admin') {
-      const option = document.createElement('option');
-      option.value = docSnap.id;
-      option.textContent = data.email;
-      select.appendChild(option);
-    }
-  }
-}
-
-function addUserBalance() {
-  const userId = document.getElementById('add-balance-user').value;
-  const amount = parseInt(document.getElementById('add-balance-amount').value);
-  if (!userId || !amount || amount <= 0) return showAlert('Chọn user và nhập số tiền hợp lệ!', 'error');
-
-  getDoc(doc(db, 'users', userId)).then((docSnap) => {
-    const currentBalance = docSnap.data().balance || 0;
-    updateDoc(doc(db, 'users', userId), { balance: currentBalance + amount })
-      .then(() => {
-        showAlert(`Cộng ${amount.toLocaleString('vi-VN')} VNĐ thành công!`, 'success');
-        loadUsers();
-      });
-  });
-}
-
-function changeAdminPassword() {
-  const user = auth.currentUser;
-  const oldPassword = document.getElementById('admin-old-password').value;
-  const newPassword = document.getElementById('admin-new-password').value;
-
-  // Re-authenticate with old password
-  signInWithEmailAndPassword(auth, user.email, oldPassword)
-    .then(() => {
-      updatePassword(user, newPassword)
-        .then(() => showAlert('Đổi mật khẩu admin thành công!', 'success'))
-        .catch((error) => showAlert('Lỗi đổi mật khẩu: ' + error.message, 'error'));
-    })
-    .catch(() => showAlert('Mật khẩu cũ sai!', 'error'));
-}
-
-// Toggle expiration type (cho admin)
-function toggleExpirationType() {
-  const type = document.getElementById('expiration-type').value;
-  document.getElementById('date-input').style.display = type === 'date' ? 'block' : 'none';
-  document.getElementById('duration-input').style.display = type === 'duration' ? 'flex' : 'none';
-}
-
-// Show alert message
-function showAlert(message, type) {
-  const alertDiv = document.createElement('div');
-  alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'error'}`;
-  alertDiv.textContent = message;
-  
-  const container = document.querySelector('.container');
-  if (container) {
-    container.insertBefore(alertDiv, container.firstChild);
     
-    setTimeout(() => alertDiv.remove(), 3000);
-  }
+    .key - info {
+        flex - direction: column;
+        align - items: flex - start;
+    }
+    
+    .key - actions {
+        width: 100 %;
+        flex - direction: column;
+    }
+    
+    .key - actions button {
+        width: 100 %;
+    }
+    
+    .user - card {
+        flex - direction: column;
+        align - items: flex - start;
+    }
+    
+    .price - amount {
+        font - size: 2rem;
+    }
+    
+    footer a {
+        display: block;
+        margin: 10px 0;
+    }
+
+    button, .btn {
+        padding: 12px 20px;
+        font - size: 0.95rem;
+    }
 }
 
-async function downloadVPSManager() {
-  const user = auth.currentUser;
-  if (!user) return showAlert('Vui lòng đăng nhập!', 'error');
-  
-  const inputKey = document.getElementById('download-key').value;
-  if (!inputKey) return showAlert('Nhập key để tải!', 'error');
-  
-  const q = query(collection(db, 'keys'), where('key', '==', inputKey), where('bound_user', '==', user.uid));
-  const snapshot = await getDocs(q);
-  if (snapshot.empty) return showAlert('Key không hợp lệ hoặc không thuộc về bạn!', 'error');
-  
-  const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
-  if (settingsDoc.exists() && settingsDoc.data().download_link) {
-    window.open(settingsDoc.data().download_link, '_blank');
-  } else {
-    showAlert('Link tải không khả dụng!', 'error');
-  }
+/* ============================================
+   RESPONSIVE - TABLET (768px - 1024px)
+   ============================================ */
+@media(min - width: 769px) and(max - width: 1024px) {
+    .container {
+        max - width: 900px;
+        padding: 35px;
+    }
+    
+    .form - grid {
+        grid - template - columns: 1fr 1fr;
+    }
+}
+
+/* ============================================
+   RESPONSIVE - DESKTOP (min-width: 1025px)
+   ============================================ */
+@media(min - width: 1025px) {
+    .container {
+        max - width: 1200px;
+    }
+    
+    .form - grid {
+        grid - template - columns: repeat(3, 1fr);
+    }
+    
+    .key - card, .user - card {
+        transition: all 0.3s ease;
+    }
+    
+    .key - card:hover {
+        transform: translateY(-8px);
+    }
+}
+
+/* Empty State */
+.empty - state {
+    text - align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty - state svg {
+    width: 150px;
+    height: 150px;
+    margin - bottom: 20px;
+    opacity: 0.5;
+}
+/* Hiệu ứng click cho button */
+button:active {
+    transform: scale(0.95);
+    box - shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.1s ease, box - shadow 0.1s ease;
+}
+
+/* Hidden Key Styles */
+.hidden - key {
+    filter: blur(5px);
+}
+.hidden - key.visible {
+    filter: none;
 }
