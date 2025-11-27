@@ -1,4 +1,4 @@
-// script.js - ĐÃ TEST 100% HOẠT ĐỘNG (cập nhật 27/11/2025)
+// script.js - VPS Manager Full Working (27/11/2025)
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
@@ -10,7 +10,7 @@ import {
     collection, query, where, serverTimestamp, increment
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-// THAY CONFIG NÀY BẰNG CỦA BẠN (bắt buộc!)
+// THAY CONFIG CỦA BẠN VÀO ĐÂY
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCe3V1JFEI9w3UoREuehqMx9gxtz-Yw1oc",
@@ -46,13 +46,12 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ĐĂNG KÝ
+// ==================== ĐĂNG KÝ ====================
 document.getElementById("register-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("register-email").value.trim();
     const pass = document.getElementById("register-password").value;
     const confirm = document.getElementById("register-confirm-password").value;
-
     if (pass !== confirm) return alert("Mật khẩu xác nhận không khớp!");
     if (pass.length < 6) return alert("Mật khẩu phải từ 6 ký tự!");
 
@@ -61,20 +60,18 @@ document.getElementById("register-form")?.addEventListener("submit", async (e) =
         await setDoc(doc(db, "users", cred.user.uid), {
             email, balance: 0, role: "user", createdAt: serverTimestamp()
         });
-        alert("Đăng ký thành công! Chào mừng bạn!");
+        alert("Đăng ký thành công!");
         location.href = "user-dashboard.html";
     } catch (err) {
-        console.error(err);
-        alert("Lỗi đăng ký: " + err.message);
+        alert("Lỗi: " + err.message);
     }
 });
 
-// ĐĂNG NHẬP
+// ==================== ĐĂNG NHẬP ====================
 document.getElementById("login-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("login-email").value.trim();
     const pass = document.getElementById("login-password").value;
-
     try {
         const cred = await signInWithEmailAndPassword(auth, email, pass);
         const snap = await getDoc(doc(db, "users", cred.user.uid));
@@ -88,7 +85,7 @@ document.getElementById("login-form")?.addEventListener("submit", async (e) => {
     }
 });
 
-// ĐĂNG XUẤT
+// ==================== ĐĂNG XUẤT ====================
 document.addEventListener("click", e => {
     if (e.target.id === "logout-btn") {
         signOut(auth);
@@ -96,7 +93,7 @@ document.addEventListener("click", e => {
     }
 });
 
-// USER DASHBOARD
+// ==================== USER DASHBOARD ====================
 async function loadUserDashboard() {
     const snap = await getDoc(doc(db, "users", currentUser.uid));
     const data = snap.data();
@@ -109,12 +106,12 @@ async function loadUserDashboard() {
     list.innerHTML = keys.empty ? "<p>Chưa có key nào</p>" : "";
     keys.forEach(d => {
         const k = d.data();
-        const exp = k.expiresAt ? new Date(k.expiresAt.seconds*1000).toLocaleDateString("vi-VN") : "Vĩnh viễn";
+        const exp = k.expiresAt ? new Date(k.expiresAt.seconds*1000).toLocaleString("vi-VN") : "Vĩnh viễn";
         list.innerHTML += `<div class="key-card"><div class="key-code">${d.id}</div><div class="key-meta">Hết hạn: ${exp}</div></div>`;
     });
 }
 
-// DÙNG KEY
+// Dùng key
 document.getElementById("use-key-btn")?.addEventListener("click", async () => {
     const key = document.getElementById("use-key-input").value.trim().toUpperCase();
     if (!key) return alert("Nhập key!");
@@ -129,9 +126,137 @@ document.getElementById("use-key-btn")?.addEventListener("click", async () => {
     loadUserDashboard();
 });
 
-// ADMIN DASHBOARD (các hàm còn lại giống như trước – bạn có thể thêm dần)
+// ==================== ADMIN DASHBOARD ====================
 async function loadAdminDashboard() {
-    if (!isAdmin) return;
-    // ... (code admin giống như mình gửi trước)
-    alert("Chào Admin! Chức năng đang được hoàn thiện");
+    if (!isAdmin) return location.href = "user-dashboard.html";
+
+    // Load danh sách key
+    const keysSnap = await getDocs(collection(db, "keys"));
+    const keyList = document.getElementById("key-list");
+    keyList.innerHTML = "";
+    keysSnap.forEach(d => {
+        const k = d.data();
+        const exp = k.expiresAt ? new Date(k.expiresAt.seconds*1000).toLocaleString("vi-VN") : "Vĩnh viễn";
+        const used = k.usedBy ? "Đã dùng" : "Chưa dùng";
+        keyList.innerHTML += `
+            <div class="key-card">
+                <div class="key-info">
+                    <div>
+                        <div class="key-code">${d.id}</div>
+                        <div class="key-meta">Hết hạn: ${exp} | ${used}</div>
+                    </div>
+                    <button class="btn-danger" onclick="deleteKey('${d.id}')">Xóa</button>
+                </div>
+            </div>`;
+    });
+
+    // Load danh sách user + select cộng tiền
+    const usersSnap = await getDocs(collection(db, "users"));
+    const userList = document.getElementById("user-list");
+    const select = document.getElementById("add-balance-user");
+    userList.innerHTML = "";
+    select.innerHTML = '<option value="">Chọn user</option>';
+    usersSnap.forEach(d => {
+        const u = d.data();
+        userList.innerHTML += `<div class="user-card"><div class="user-info"><div class="user-email">${u.email}</div><div>Số dư: ${(u.balance||0).toLocaleString()} VNĐ</div></div></div>`;
+        select.innerHTML += `<option value="${d.id}">${u.email} (${(u.balance||0).toLocaleString()}đ)</option>`;
+    });
+
+    // Load key chưa dùng + user để gắn key
+    const keySelect = document.getElementById("apply-key-select");
+    const userSelect = document.getElementById("apply-user-select");
+    if (keySelect && userSelect) {
+        keySelect.innerHTML = '<option value="">Chọn key chưa dùng</option>';
+        userSelect.innerHTML = '<option value="">Chọn user</option>';
+        const freeKeys = await getDocs(query(collection(db, "keys"), where("usedBy", "==", null)));
+        freeKeys.forEach(d => {
+            const exp = d.data().expiresAt ? new Date(d.data().expiresAt.seconds*1000).toLocaleDateString("vi-VN") : "Vĩnh viễn";
+            keySelect.innerHTML += `<option value="${d.id}">${d.id} (${exp})</option>`;
+        });
+        usersSnap.forEach(d => {
+            userSelect.innerHTML += `<option value="${d.id}">${d.data().email}</option>`;
+        });
+    }
 }
+
+// Tạo key
+function generateKey() {
+    const c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let r = "";
+    for (let i = 0; i < 16; i++) {
+        r += c.charAt(Math.floor(Math.random() * c.length));
+        if (i === 3 || i === 7 || i === 11) r += "-";
+    }
+    return r;
+}
+
+document.getElementById("create-key-btn")?.addEventListener("click", async () => {
+    let expiresAt = null;
+    const type = document.getElementById("expiration-type").value;
+
+    if (type === "date") {
+        const v = document.getElementById("expiration-date").value;
+        if (!v) return alert("Chọn ngày!");
+        expiresAt = new Date(v);
+    } else if (type === "duration") {
+        const val = parseInt(document.getElementById("duration-value").value);
+        const unit = document.getElementById("duration-unit").value;
+        if (!val) return alert("Nhập số lượng!");
+        expiresAt = new Date();
+        if (unit === "hours") expiresAt.setHours(expiresAt.getHours() + val);
+        if (unit === "days") expiresAt.setDate(expiresAt.getDate() + val);
+        if (unit === "months") expiresAt.setMonth(expiresAt.getMonth() + val);
+        if (unit === "years") expiresAt.setFullYear(expiresAt.getFullYear() + val);
+    }
+
+    const key = generateKey();
+    await setDoc(doc(db, "keys", key), {
+        usedBy: null,
+        expiresAt: expiresAt ? { seconds: Math.floor(expiresAt.getTime()/1000) } : null,
+        createdAt: serverTimestamp()
+    });
+    alert("TẠO KEY THÀNH CÔNG!\n" + key);
+    loadAdminDashboard();
+});
+
+// Gắn key
+document.getElementById("apply-key-btn")?.addEventListener("click", async () => {
+    const keyId = document.getElementById("apply-key-select").value;
+    const userId = document.getElementById("apply-user-select").value;
+    if (!keyId || !userId) return alert("Chọn key và user!");
+    await updateDoc(doc(db, "keys", keyId), { usedBy: userId, usedAt: serverTimestamp() });
+    alert("Gắn key thành công!");
+    loadAdminDashboard();
+});
+
+// Cộng tiền
+document.getElementById("add-balance-btn")?.addEventListener("click", async () => {
+    const uid = document.getElementById("add-balance-user").value;
+    const amount = parseInt(document.getElementById("add-balance-amount").value);
+    if (!uid || !amount) return alert("Chọn user và nhập số tiền!");
+    await updateDoc(doc(db, "users", uid), { balance: increment(amount) });
+    alert("Cộng tiền thành công!");
+    loadAdminDashboard();
+});
+
+// Xóa key
+window.deleteKey = async (key) => {
+    if (confirm("Xóa key này?")) {
+        await deleteDoc(doc(db, "keys", key));
+        loadAdminDashboard();
+    }
+};
+
+// Show/hide input hết hạn
+document.getElementById("expiration-type")?.addEventListener("change", e => {
+    document.getElementById("date-input").style.display = e.target.value === "date" ? "block" : "none";
+    document.getElementById("duration-input").style.display = e.target.value === "duration" ? "flex" : "none";
+});
+
+// Cập nhật link tải
+document.getElementById("update-link-btn")?.addEventListener("click", async () => {
+    const link = document.getElementById("download-link").value.trim();
+    if (!link) return alert("Nhập link!");
+    await setDoc(doc(db, "settings", "download"), { link });
+    alert("Cập nhật link tải thành công!");
+});
